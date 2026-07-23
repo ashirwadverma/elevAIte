@@ -1,0 +1,19 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Install Dependencies",
+      "type": "shell",
+      "command": "cmd.exe",
+      "args": ["/c", "cd /d c:\\Users\\Ashirwad Verma\\OneDrive\\Desktop\\elevAIte && npm.cmd install"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Start Dev Server",
+      "type": "shell",
+      "command": "cmd.exe",
+      "args": ["/c", "cd /d c:\\Users\\Ashirwad Verma\\OneDrive\\Desktop\\elevAIte && npm.cmd run dev"],
+      "problemMatcher": []
+    }
+  ]
+}

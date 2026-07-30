@@ -4,8 +4,9 @@
 
 :root {
   font-family: 'Inter', system-ui, sans-serif;
-  color: #f8fafc;
-  background: #04060d;
+  /* Primary dark-tinted background to match reference */
+  color: #eef4ff;
+  background: #0a0e1a;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -20,21 +21,104 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  /* deep space navy base with subtle purple + teal glows */
   background-image:
-    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px),
-    radial-gradient(circle at top left, rgba(34, 211, 238, 0.16), transparent 35%),
-    radial-gradient(circle at 85% 20%, rgba(192, 132, 252, 0.16), transparent 25%),
-    #04060d;
-  background-size: 32px 32px, 32px 32px, auto, auto, auto;
-  color: #f8fafc;
+    radial-gradient(circle at 18% 22%, rgba(124,108,246,0.14), transparent 26%),
+    radial-gradient(circle at 82% 12%, rgba(139,92,246,0.10), transparent 20%),
+    linear-gradient(180deg, rgba(4,6,13,0.08), transparent 30%);
+  background-color: #0a0e1a;
+  background-size: cover;
+  color: #eef4ff;
 }
 
 * {
   box-sizing: border-box;
 }
 
-::selection {
-  background: rgba(34, 211, 238, 0.3);
-  color: white;
+.light h1,
+.light h2,
+.light h3,
+.light p,
+.light li,
+.light label,
+.light span,
+.light strong,
+.light small {
+  color: inherit;
 }
+
+.light .text-white {
+  color: #0f172a !important;
+}
+
+.light .text-slate-300 {
+  color: #334155 !important;
+}
+
+.light .text-slate-400 {
+  color: #475569 !important;
+}
+
+.light .text-slate-500 {
+  color: #64748b !important;
+}
+
+.light .text-slate-200 {
+  color: #334155 !important;
+}
+
+.light .bg-white\/10 {
+  background-color: rgba(255, 255, 255, 0.92) !important;
+}
+
+.light .bg-white\/5 {
+  background-color: rgba(255, 255, 255, 0.96) !important;
+}
+
+.light .border-white\/10 {
+  border-color: rgba(15, 23, 42, 0.14) !important;
+}
+
+.light .border-white\/5 {
+  border-color: rgba(15, 23, 42, 0.12) !important;
+}
+
+.light input,
+.light textarea {
+  color: #0f172a !important;
+  background-color: rgba(255, 255, 255, 0.96) !important;
+}
+
+.light input::placeholder,
+.light textarea::placeholder {
+  color: #64748b !important;
+}
+
+::selection {
+  background: rgba(124, 108, 246, 0.28);
+  color: #071025;
+}
+
+/* Palette overrides: map common Tailwind cyan/violet utilities to the new teal→purple palette */
+/* Targets include utility class names and partial matches to avoid changing markup. */
+
+[class*="text-violet-300"] { color: #8b5cf6 !important; }
+[class*="text-violet-200"] { color: rgba(139,92,246,0.9) !important; }
+
+[class*="from-violet-400"] { --tw-gradient-from: #8b5cf6 !important; }
+[class*="via-violet-400"], [class*="via-violet-600"] { --tw-gradient-via: #7c6cf6 !important; }
+[class*="to-violet-500"] { --tw-gradient-to: #7c6cf6 !important; }
+
+[class*="border-violet-400"] { border-color: rgba(124,108,246,0.28) !important; }
+[class*="bg-violet-400"] { background-color: rgba(139,92,246,0.08) !important; }
+[class*="bg-violet-500"] { background-color: rgba(124,108,246,0.08) !important; }
+
+/* Gradient helpers: ensure gradients use our new variables when applied */
+[class*="bg-gradient-to-r"], [class*="bg-gradient-to-br"] {
+  /* ensure gradient stops inherit from the variables above */
+}
+
+/* Hover/active color replacements */
+[class*="hover:text-violet-300"] { color: #8b5cf6 !important; }
+[class*="hover:text-violet-500"] { color: #8b5cf6 !important; }
+

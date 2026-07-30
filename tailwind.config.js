@@ -6,10 +6,10 @@ export default {
       colors: {
         midnight: '#060816',
         glow: '#7c3aed',
-        cyan: '#22d3ee'
+        violet: '#8b5cf6'
       },
       boxShadow: {
-        soft: '0 20px 45px rgba(34, 211, 238, 0.15)'
+        soft: '0 20px 45px rgba(139, 92, 246, 0.15)'
       }
     }
   },

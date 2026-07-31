@@ -1,7 +1,8 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
-import { Routes, Route, Link, NavLink, useLocation } from 'react-router-dom';
+import { Routes, Route, Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
+  AlertCircle,
   ArrowRight,
   ArrowUpRight,
   BrainCircuit,
@@ -151,13 +152,12 @@ function MainLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
   const [faqOpen, setFaqOpen] = useState(0);
-  const [commandOpen, setCommandOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
   const [usageMetrics, setUsageMetrics] = useState(readUsage);
   const location = useLocation();
 
-  const navItems = ['Resume Analyzer', 'Mock Interview', 'Skill Gap Analysis', 'Learning Roadmap', 'Dashboard', 'Pricing', 'About', 'Contact'];
+  const navItems = ['Resume Analyzer', 'Mock Interview', 'Skill Gap Analysis', 'Learning Roadmap', 'Dashboard'];
 
   const bumpUsage = (key) => {
     setUsageMetrics((prev) => {
@@ -169,20 +169,9 @@ function MainLayout() {
 
   useEffect(() => {
     const handleMove = (event) => setCursorPos({ x: event.clientX, y: event.clientY });
-    const handleKeyDown = (event) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
-        event.preventDefault();
-        setCommandOpen(true);
-      }
-      if (event.key === 'Escape') {
-        setCommandOpen(false);
-      }
-    };
     window.addEventListener('mousemove', handleMove);
-    window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('mousemove', handleMove);
-      window.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
 
@@ -220,7 +209,6 @@ function MainLayout() {
               })}
             </nav>
             <div className="hidden items-center gap-3 lg:flex">
-              <button onClick={() => setCommandOpen(true)} className={`rounded-full border px-3 py-2 text-sm ${darkMode ? 'border-white/10 bg-white/10 text-slate-200' : 'border-slate-200 bg-white/80 text-slate-700'}`}>⌘K Search</button>
               <button onClick={() => setDarkMode(!darkMode)} className={`rounded-full border p-2 ${darkMode ? 'border-white/10 bg-white/10 text-slate-200' : 'border-slate-200 bg-white/80 text-slate-700'}`}>
                 {darkMode ? <SunMedium className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </button>
@@ -242,27 +230,6 @@ function MainLayout() {
             </div>
           )}
         </header>
-
-        <AnimatePresence>
-          {commandOpen && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] flex items-start justify-center bg-[#071025]/70 px-4 pt-24 backdrop-blur-md">
-                <motion.div initial={{ y: -10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -10, opacity: 0 }} className="w-full max-w-xl rounded-[24px] border border-white/10 bg-[#0a0e1a]/95 p-4 shadow-2xl">
-                <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
-                  <Sparkles className="h-4 w-4 text-violet-300" />
-                  <input autoFocus className="w-full bg-transparent text-sm text-white outline-none" placeholder="Search pages or features" />
-                </div>
-                <div className="mt-3 space-y-2">
-                  {commandItems.map((item) => (
-                    <Link key={item.label} to={item.path} onClick={() => setCommandOpen(false)} className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-slate-300 hover:text-white">
-                      <span>{item.label}</span>
-                      <ArrowRight className="h-4 w-4 text-violet-300" />
-                    </Link>
-                  ))}
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         <main className="relative overflow-hidden">
           <AnimatePresence mode="wait">
@@ -324,7 +291,10 @@ function MainLayout() {
               <div className="flex flex-col gap-2 text-sm text-slate-400">
                 <Link to="/resume-analyzer" className="hover:text-[#8b5cf6]">Resume Analyzer</Link>
                 <Link to="/mock-interview" className="hover:text-[#8b5cf6]">Mock Interviews</Link>
+                <Link to="/skill-gap-analysis" className="hover:text-[#8b5cf6]">Skill Gap Analysis</Link>
                 <Link to="/pricing" className="hover:text-[#8b5cf6]">Pricing</Link>
+                <Link to="/about" className="hover:text-[#8b5cf6]">About</Link>
+                <Link to="/contact" className="hover:text-[#8b5cf6]">Contact</Link>
               </div>
             </div>
             <div>
@@ -518,6 +488,125 @@ function HomePage({ faqOpen, setFaqOpen }) {
   );
 }
 
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+/** Returns Tailwind color class based on 0-100 score */
+function scoreColor(score) {
+  if (score >= 80) return 'text-emerald-300';
+  if (score >= 60) return 'text-amber-300';
+  if (score >= 40) return 'text-orange-400';
+  return 'text-rose-400';
+}
+
+/** Returns a label and color for a score band */
+function scoreBand(score) {
+  if (score >= 80) return { label: 'Excellent', ring: 'stroke-emerald-400', bg: 'bg-emerald-400/10 border-emerald-400/30 text-emerald-200' };
+  if (score >= 60) return { label: 'Good', ring: 'stroke-amber-400', bg: 'bg-amber-400/10 border-amber-400/30 text-amber-200' };
+  if (score >= 40) return { label: 'Fair', ring: 'stroke-orange-400', bg: 'bg-orange-400/10 border-orange-400/30 text-orange-200' };
+  return { label: 'Needs Work', ring: 'stroke-rose-400', bg: 'bg-rose-400/10 border-rose-400/30 text-rose-200' };
+}
+
+/** SVG ring / gauge for the overall score */
+function ScoreRing({ score }) {
+  const r = 54;
+  const circumference = 2 * Math.PI * r;
+  const offset = circumference - (score / 100) * circumference;
+  const band = scoreBand(score);
+  return (
+    <div className="relative flex items-center justify-center">
+      <svg width="136" height="136" viewBox="0 0 136 136" className="-rotate-90">
+        <circle cx="68" cy="68" r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="10" />
+        <circle
+          cx="68" cy="68" r={r} fill="none"
+          strokeWidth="10" strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          className={`${band.ring} transition-all duration-700`}
+        />
+      </svg>
+      <div className="absolute flex flex-col items-center">
+        <span className={`text-3xl font-bold ${scoreColor(score)}`}>{score}</span>
+        <span className="text-xs text-slate-400">/ 100</span>
+        <span className={`mt-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${band.bg}`}>{band.label}</span>
+      </div>
+    </div>
+  );
+}
+
+/** Mini horizontal bar for category score */
+function CategoryBar({ label, value }) {
+  const band = scoreBand(value);
+  return (
+    <div>
+      <div className="flex items-center justify-between text-xs mb-1">
+        <span className="text-slate-400">{label}</span>
+        <span className={`font-semibold ${scoreColor(value)}`}>{value}%</span>
+      </div>
+      <div className="h-1.5 rounded-full bg-white/10">
+        <div
+          className={`h-1.5 rounded-full transition-all duration-700 ${band.ring.replace('stroke-', 'bg-')}`}
+          style={{ width: `${value}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+const SECTION_STATUS_STYLE = {
+  present: 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300',
+  strong:  'border-emerald-400/30 bg-emerald-400/10 text-emerald-300',
+  weak:    'border-amber-400/30 bg-amber-400/10 text-amber-300',
+  missing: 'border-rose-400/30 bg-rose-400/10 text-rose-300',
+};
+
+const GEMINI_RESPONSE_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    executive_summary: { type: 'STRING' },
+    experience_level: { type: 'STRING' },
+    overall_score: { type: 'INTEGER' },
+    category_scores: {
+      type: 'OBJECT',
+      properties: {
+        ats_compatibility: { type: 'INTEGER' },
+        keyword_match: { type: 'INTEGER' },
+        formatting: { type: 'INTEGER' },
+        impact_quantification: { type: 'INTEGER' },
+      },
+      required: ['ats_compatibility', 'keyword_match', 'formatting', 'impact_quantification'],
+    },
+    section_analysis: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: {
+          section: { type: 'STRING' },
+          status: { type: 'STRING' },
+          feedback: { type: 'STRING' },
+        },
+        required: ['section', 'status', 'feedback'],
+      },
+    },
+    matched_keywords: { type: 'ARRAY', items: { type: 'STRING' } },
+    missing_keywords: { type: 'ARRAY', items: { type: 'STRING' } },
+    formatting_issues: { type: 'ARRAY', items: { type: 'STRING' } },
+    weak_bullets: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: { original: { type: 'STRING' }, suggestion: { type: 'STRING' } },
+        required: ['original', 'suggestion'],
+      },
+    },
+    suggestions: { type: 'ARRAY', items: { type: 'STRING' } },
+  },
+  required: ['executive_summary', 'experience_level', 'overall_score', 'category_scores', 'section_analysis', 'matched_keywords', 'missing_keywords', 'formatting_issues', 'weak_bullets', 'suggestions'],
+};
+
+const GEMINI_SYSTEM_PROMPT = `You are a senior technical recruiter and ATS expert with 15+ years of experience at FAANG companies and top-tier startups. Evaluate resumes exactly like enterprise ATS systems and senior recruiters do — critically, precisely, and without generic feedback. overall_score is a weighted average (ATS 30%, Keyword 30%, Formatting 20%, Impact 20%). 90+ is rare. weak_bullet rewrites MUST contain action verbs and at least one metric. suggestions must be exactly 4-6 specific, prioritized, actionable items — not generic advice. Always respond ONLY with valid JSON matching the schema.`;
+
+// ─── ResumeAnalyzerPage ──────────────────────────────────────────────────────
+
 function ResumeAnalyzerPage({ onUsageUpdate }) {
   const [uploadedFile, setUploadedFile] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -526,7 +615,17 @@ function ResumeAnalyzerPage({ onUsageUpdate }) {
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [processingStep, setProcessingStep] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [copiedIdx, setCopiedIdx] = useState(null);
   const fileInputRef = useRef(null);
+
+  const [jobDescription, setJobDescription] = useState('');
+
+  // Always use Supabase Edge Function — Gemini key lives in Supabase secrets, never the browser
+  const supabaseProjectUrl = import.meta.env.VITE_SUPABASE_URL || '';
+  const edgeFunctionUrl = supabaseProjectUrl
+    ? `${supabaseProjectUrl}/functions/v1/analyze-resume`
+    : '';
+  const [analysisResult, setAnalysisResult] = useState(null);
 
   const steps = [
     'Uploading Resume',
@@ -536,7 +635,7 @@ function ResumeAnalyzerPage({ onUsageUpdate }) {
     'Finding Missing Keywords',
     'Analyzing Skills',
     'Generating Suggestions',
-    'Preparing Final Report'
+    'Preparing Final Report',
   ];
 
   const formatFileSize = (bytes) => {
@@ -571,13 +670,15 @@ function ResumeAnalyzerPage({ onUsageUpdate }) {
       type: fileType,
       size: file.size,
       sizeLabel: formatFileSize(file.size),
-      uploadedAt: uploadTime
+      uploadedAt: uploadTime,
+      rawFile: file
     });
     setError('');
     setShowAnalysis(false);
     setIsProcessing(false);
     setProgress(0);
     setProcessingStep(0);
+    setAnalysisResult(null);
   };
 
   const handleDrop = (event) => {
@@ -589,13 +690,64 @@ function ResumeAnalyzerPage({ onUsageUpdate }) {
 
   const triggerPicker = () => fileInputRef.current?.click();
 
-  const startAnalysis = () => {
+  const startAnalysis = async () => {
     if (!uploadedFile) return;
+
+    if (!edgeFunctionUrl) {
+      setError('VITE_SUPABASE_URL is not set in your .env file. Add it and restart the dev server.');
+      return;
+    }
+
     onUsageUpdate('resumeAnalyzer');
     setIsProcessing(true);
     setShowAnalysis(false);
     setProgress(0);
     setProcessingStep(0);
+    setError('');
+
+    let currentStep = 0;
+    const interval = window.setInterval(() => {
+      currentStep = Math.min(currentStep + 1, steps.length - 2);
+      setProcessingStep(currentStep);
+      setProgress(Math.round((currentStep / steps.length) * 90));
+    }, 900);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', uploadedFile.rawFile);
+      formData.append('job_description', jobDescription);
+
+      const response = await fetch(edgeFunctionUrl, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const responseData = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        const detail =
+          responseData?.details ||
+          responseData?.error ||
+          `Server responded with status ${response.status}`;
+        throw new Error(detail);
+      }
+
+      window.clearInterval(interval);
+      setProcessingStep(steps.length - 1);
+      setProgress(100);
+      setAnalysisResult(responseData);
+
+      setTimeout(() => {
+        setShowAnalysis(true);
+        setIsProcessing(false);
+      }, 600);
+
+    } catch (err) {
+      window.clearInterval(interval);
+      setIsProcessing(false);
+      setError(err.message || 'An unexpected error occurred during analysis.');
+      console.error('[ResumeAnalyzer]', err);
+    }
   };
 
   const resetUpload = () => {
@@ -605,35 +757,81 @@ function ResumeAnalyzerPage({ onUsageUpdate }) {
     setIsProcessing(false);
     setProgress(0);
     setProcessingStep(0);
+    setAnalysisResult(null);
   };
 
-  useEffect(() => {
-    if (!isProcessing) return;
+  const downloadReport = () => {
+    if (!analysisResult) return;
+    const r = analysisResult;
+    const lines = [
+      'elevAIte — AI Resume ATS Analysis Report',
+      '═'.repeat(50),
+      `Resume      : ${uploadedFile.name}`,
+      `Analyzed at : ${new Date().toLocaleString()}`,
+      `Experience  : ${r.experience_level || 'N/A'}`,
+      '',
+      '── Overall Score ───────────────────────────────',
+      `  ${r.overall_score}/100  (${scoreBand(r.overall_score).label})`,
+      '',
+      '── Category Scores ─────────────────────────────',
+      `  ATS Compatibility    : ${r.category_scores?.ats_compatibility ?? 'N/A'}%`,
+      `  Keyword Match        : ${r.category_scores?.keyword_match ?? 'N/A'}%`,
+      `  Formatting           : ${r.category_scores?.formatting ?? 'N/A'}%`,
+      `  Impact Quantification: ${r.category_scores?.impact_quantification ?? 'N/A'}%`,
+      '',
+      '── Executive Summary ───────────────────────────',
+      `  ${r.executive_summary || 'N/A'}`,
+      '',
+      '── Section Analysis ────────────────────────────',
+      ...(r.section_analysis?.map((s) => `  [${s.status.toUpperCase().padEnd(7)}] ${s.section}: ${s.feedback}`) ?? ['  N/A']),
+      '',
+      '── Matched Keywords ────────────────────────────',
+      `  ${r.matched_keywords?.join(', ') || 'None'}`,
+      '',
+      '── Missing Keywords ────────────────────────────',
+      `  ${r.missing_keywords?.join(', ') || 'None'}`,
+      '',
+      '── Formatting Issues ───────────────────────────',
+      ...(r.formatting_issues?.length ? r.formatting_issues.map((i, n) => `  ${n + 1}. ${i}`) : ['  None detected.']),
+      '',
+      '── AI Recommendations ──────────────────────────',
+      ...(r.suggestions?.map((s, n) => `  ${n + 1}. ${s}`) ?? ['  None.']),
+      '',
+      '── Bullet Point Rewrites ───────────────────────',
+      ...(r.weak_bullets?.length
+        ? r.weak_bullets.flatMap((b, n) => [
+            `  ${n + 1}. Original : "${b.original}"`,
+            `     Improved: "${b.suggestion}"`,
+            '',
+          ])
+        : ['  None.']),
+      '═'.repeat(50),
+      'Generated by elevAIte — AI Career Accelerator',
+    ];
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${uploadedFile.name.replace(/\.[^/.]+$/, '')}_ATS_Report.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
-    let currentIndex = 0;
-    const interval = window.setInterval(() => {
-      currentIndex += 1;
-      setProcessingStep(currentIndex);
-      setProgress(Math.round((currentIndex / steps.length) * 100));
+  const copyToClipboard = async (text, idx) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedIdx(idx);
+      setTimeout(() => setCopiedIdx(null), 2000);
+    } catch {
+      // fallback for environments without clipboard API
+    }
+  };
 
-      if (currentIndex >= steps.length) {
-        window.clearInterval(interval);
-        window.setTimeout(() => {
-          setProgress(100);
-          setShowAnalysis(true);
-          setIsProcessing(false);
-        }, 500);
-      }
-    }, 850);
-
-    return () => window.clearInterval(interval);
-  }, [isProcessing]);
-
-  const analysisStats = [
-    { label: 'ATS Score', value: '92/100', accent: 'text-violet-200' },
-    { label: 'Resume Score', value: '88/100', accent: 'text-violet-200' },
-    { label: 'Keyword Match', value: '84%', accent: 'text-emerald-200' },
-    { label: 'Grammar', value: '9.1/10', accent: 'text-amber-200' }
+  const categoryScores = [
+    { label: 'ATS Compatibility', key: 'ats_compatibility' },
+    { label: 'Keyword Match', key: 'keyword_match' },
+    { label: 'Formatting', key: 'formatting' },
+    { label: 'Impact Quantification', key: 'impact_quantification' },
   ];
 
   return (
@@ -648,7 +846,25 @@ function ResumeAnalyzerPage({ onUsageUpdate }) {
         </p>
       </motion.div>
 
-      <div className="mt-12 grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
+      {/* ── Backend Status ──────────────────────────────────────────────────── */}
+      {edgeFunctionUrl ? (
+        <div className="mx-auto mt-8 max-w-3xl flex items-center gap-3 rounded-[20px] border border-emerald-400/20 bg-emerald-400/8 px-4 py-3">
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+          <div className="flex-1 min-w-0">
+            <span className="text-xs font-semibold text-emerald-300">Connected to Supabase Edge Function</span>
+            <p className="text-[11px] text-slate-400 truncate mt-0.5">{edgeFunctionUrl}</p>
+          </div>
+        </div>
+      ) : (
+        <div className="mx-auto mt-8 max-w-3xl flex items-start gap-3 rounded-[20px] border border-amber-400/30 bg-amber-400/10 px-4 py-3">
+          <X className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" />
+          <p className="text-xs text-amber-200">
+            <code className="font-mono">VITE_SUPABASE_URL</code> is not set. Add it to your <code className="font-mono">.env</code> file and restart the dev server.
+          </p>
+        </div>
+      )}
+
+      <div className="mt-8 grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
         <motion.div
           initial={{ opacity: 0, x: -16 }}
           animate={{ opacity: 1, x: 0 }}
@@ -667,10 +883,7 @@ function ResumeAnalyzerPage({ onUsageUpdate }) {
 
             <motion.div
               whileHover={{ scale: 1.01, y: -2 }}
-              onDragOver={(event) => {
-                event.preventDefault();
-                setIsDragging(true);
-              }}
+              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
               onDragLeave={() => setIsDragging(false)}
               onDrop={handleDrop}
               className={`mt-8 rounded-[28px] border p-8 text-center transition-all duration-300 sm:p-10 ${isDragging ? 'border-violet-300 bg-violet-400/15 shadow-[0_0_38px_rgba(139,92,246,0.22)]' : 'border-dashed border-violet-400/30 bg-violet-400/10'}`}
@@ -681,12 +894,26 @@ function ResumeAnalyzerPage({ onUsageUpdate }) {
               <p className="mt-6 text-xl font-semibold text-white">Drop your resume here</p>
               <p className="mt-2 text-sm text-slate-400">or browse files to upload a PDF or DOCX document.</p>
               <button onClick={triggerPicker} className="mt-6 rounded-full bg-gradient-to-r from-violet-400 via-fuchsia-400 to-fuchsia-500 px-6 py-3 font-semibold text-white shadow-[0_0_24px_rgba(139,92,246,0.2)]">Browse Files</button>
-              <input ref={fileInputRef} type="file" accept=".pdf,.docx" className="hidden" onChange={(event) => handleFile(event.target.files?.[0])} />
+              <input ref={fileInputRef} type="file" accept=".pdf,.docx" className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} />
               <p className="mt-5 text-sm text-slate-400">Supported formats: PDF • DOCX</p>
             </motion.div>
 
+            {/* Job Description */}
+            <div className="mt-6 text-left">
+              <label className="text-sm font-semibold uppercase tracking-[0.25em] text-violet-300">Target Job Description <span className="normal-case font-normal text-slate-500">(Optional — improves keyword analysis)</span></label>
+              <textarea
+                value={jobDescription}
+                onChange={(e) => setJobDescription(e.target.value)}
+                placeholder="Paste the job description here to check how well your resume matches the role requirements..."
+                className="mt-3 min-h-[140px] w-full rounded-[20px] border border-white/10 bg-white/5 p-4 text-sm text-slate-200 placeholder-slate-500 outline-none focus:border-[#8b5cf6]/50 transition-colors"
+              />
+            </div>
+
             {error && (
-              <div className="mt-4 rounded-2xl border border-rose-400/30 bg-rose-400/10 px-4 py-3 text-sm text-rose-200">{error}</div>
+              <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="mt-4 flex items-start gap-3 rounded-2xl border border-rose-400/30 bg-rose-400/10 px-4 py-3 text-sm text-rose-200">
+                <X className="h-4 w-4 shrink-0 mt-0.5 text-rose-400" />
+                <span>{error}</span>
+              </motion.div>
             )}
           </div>
         </motion.div>
@@ -758,7 +985,7 @@ function ResumeAnalyzerPage({ onUsageUpdate }) {
                   <LoaderCircle className="h-5 w-5 animate-spin" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.3em] text-violet-300">Processing...</p>
+                  <p className="text-sm font-semibold uppercase tracking-[0.3em] text-violet-300">Processing…</p>
                   <p className="mt-1 text-lg font-semibold text-white">Your AI report is being generated</p>
                 </div>
               </div>
@@ -766,16 +993,16 @@ function ResumeAnalyzerPage({ onUsageUpdate }) {
               <div className="mt-6 h-2.5 rounded-full bg-white/10">
                 <motion.div animate={{ width: `${progress}%` }} transition={{ duration: 0.3 }} className="h-2.5 rounded-full bg-gradient-to-r from-violet-400 via-fuchsia-400 to-fuchsia-500" />
               </div>
-
-              <div className="mt-4 text-sm text-slate-400">Estimated processing time: ~20 seconds</div>
+              <div className="mt-2 text-right text-xs text-slate-500">{progress}%</div>
 
               <div className="mt-6 space-y-3">
                 {steps.map((step, index) => {
-                  const active = index <= processingStep;
+                  const done = index < processingStep;
+                  const active = index === processingStep;
                   return (
-                    <div key={step} className={`flex items-center justify-between rounded-2xl border px-4 py-3 text-sm ${active ? 'border-violet-400/30 bg-violet-400/10 text-violet-100' : 'border-white/10 bg-white/5 text-slate-300'}`}>
+                    <div key={step} className={`flex items-center justify-between rounded-2xl border px-4 py-3 text-sm transition-all ${done ? 'border-emerald-400/25 bg-emerald-400/8 text-emerald-200' : active ? 'border-violet-400/30 bg-violet-400/10 text-violet-100' : 'border-white/10 bg-white/5 text-slate-500'}`}>
                       <span>{step}</span>
-                      {active ? <CheckCircle2 className="h-4 w-4" /> : <div className="h-4 w-4 rounded-full border border-white/20" />}
+                      {done ? <CheckCircle2 className="h-4 w-4 text-emerald-400" /> : active ? <LoaderCircle className="h-4 w-4 animate-spin text-violet-300" /> : <div className="h-4 w-4 rounded-full border border-white/20" />}
                     </div>
                   );
                 })}
@@ -783,64 +1010,166 @@ function ResumeAnalyzerPage({ onUsageUpdate }) {
             </motion.div>
           )}
 
-          {showAnalysis && uploadedFile && (
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="rounded-[32px] border border-white/10 bg-[#090d20]/95 p-6 shadow-[0_0_50px_rgba(168,85,247,0.12)] backdrop-blur-2xl">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.3em] text-violet-300">Resume Analysis</p>
-                  <h3 className="mt-2 text-2xl font-semibold text-white">{uploadedFile.name}</h3>
-                </div>
-                <button className="flex items-center gap-2 rounded-full border border-violet-400/30 bg-violet-400/10 px-4 py-2 text-sm font-semibold text-violet-200">
-                  <Download className="h-4 w-4" /> Download PDF Report
-                </button>
-              </div>
+          {showAnalysis && analysisResult && (
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
 
-              <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                {analysisStats.map((item) => (
-                  <div key={item.label} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <p className="text-sm text-slate-400">{item.label}</p>
-                    <p className={`mt-2 text-2xl font-semibold ${item.accent}`}>{item.value}</p>
+              {/* Header + score ring + category bars */}
+              <div className="rounded-[32px] border border-white/10 bg-[#090d20]/95 p-6 shadow-[0_0_50px_rgba(168,85,247,0.12)] backdrop-blur-2xl">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold uppercase tracking-[0.3em] text-violet-300">Analysis Complete</p>
+                    <h3 className="mt-2 text-2xl font-semibold text-white">{uploadedFile.name}</h3>
+                    {analysisResult.experience_level && (
+                      <span className="mt-2 inline-block rounded-full border border-violet-400/30 bg-violet-400/10 px-3 py-1 text-xs font-semibold text-violet-200">
+                        {analysisResult.experience_level}
+                      </span>
+                    )}
                   </div>
-                ))}
-              </div>
-
-              <div className="mt-6 grid gap-5 lg:grid-cols-2">
-                <div className="rounded-[24px] border border-white/10 bg-white/5 p-5">
-                  <p className="text-sm font-semibold uppercase tracking-[0.25em] text-violet-300">Strengths</p>
-                  <ul className="mt-4 space-y-2 text-sm text-slate-300">
-                    {['Strong project ownership', 'Clear technical stack', 'Leadership and collaboration'].map((item) => (
-                      <li key={item} className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-violet-300" /> {item}</li>
-                    ))}
-                  </ul>
+                  <div className="flex flex-wrap gap-2">
+                    <button onClick={resetUpload} className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-300 hover:text-white transition">
+                      <RefreshCw className="h-4 w-4" /> New
+                    </button>
+                    <button onClick={downloadReport} className="flex items-center gap-2 rounded-full border border-violet-400/30 bg-violet-400/10 px-4 py-2 text-sm font-semibold text-violet-200 hover:bg-violet-400/20 transition">
+                      <Download className="h-4 w-4" /> Download Report
+                    </button>
+                  </div>
                 </div>
-                <div className="rounded-[24px] border border-white/10 bg-white/5 p-5">
-                  <p className="text-sm font-semibold uppercase tracking-[0.25em] text-violet-300">Weaknesses</p>
-                  <ul className="mt-4 space-y-2 text-sm text-slate-300">
-                    {['Missing measurable impact', 'Limited AI/ML keywords', 'Formatting can be tightened'].map((item) => (
-                      <li key={item} className="flex items-center gap-2"><ArrowUpRight className="h-4 w-4 text-violet-300" /> {item}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
 
-              <div className="mt-6 grid gap-5 lg:grid-cols-2">
-                <div className="rounded-[24px] border border-white/10 bg-white/5 p-5">
-                  <p className="text-sm font-semibold uppercase tracking-[0.25em] text-violet-300">Missing Skills</p>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {['LangChain', 'MLOps', 'System Design', 'Prompt Engineering'].map((item) => (
-                      <span key={item} className="rounded-full border border-violet-400/30 bg-violet-400/10 px-3 py-1 text-sm text-violet-100">{item}</span>
+                <div className="mt-6 flex flex-col items-center gap-6 sm:flex-row sm:items-start">
+                  <div className="shrink-0">
+                    <ScoreRing score={analysisResult.overall_score} />
+                  </div>
+                  <div className="flex-1 space-y-3 w-full">
+                    {categoryScores.map(({ label, key }) => (
+                      <CategoryBar key={key} label={label} value={analysisResult.category_scores?.[key] ?? 0} />
                     ))}
                   </div>
                 </div>
-                <div className="rounded-[24px] border border-white/10 bg-white/5 p-5">
-                  <p className="text-sm font-semibold uppercase tracking-[0.25em] text-violet-300">AI Recommendations</p>
-                  <ul className="mt-4 space-y-2 text-sm text-slate-300">
-                    {['Add quantified results to bullet points', 'Highlight cloud and AI experience', 'Use a cleaner layout for ATS parsing'].map((item) => (
-                      <li key={item} className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-amber-300" /> {item}</li>
+
+                {analysisResult.executive_summary && (
+                  <div className="mt-6 rounded-2xl border border-violet-400/20 bg-violet-400/5 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.25em] text-violet-300 mb-2">Recruiter Summary</p>
+                    <p className="text-sm text-slate-300 leading-relaxed">{analysisResult.executive_summary}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Section Analysis */}
+              {analysisResult.section_analysis?.length > 0 && (
+                <div className="rounded-[28px] border border-white/10 bg-[#090d20]/90 p-5 backdrop-blur-2xl">
+                  <p className="text-sm font-semibold uppercase tracking-[0.25em] text-violet-300 mb-4">Section Analysis</p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {analysisResult.section_analysis.map((s) => (
+                      <div key={s.section} className={`rounded-2xl border p-3 text-sm ${SECTION_STATUS_STYLE[s.status] || SECTION_STATUS_STYLE.weak}`}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-semibold">{s.section}</span>
+                          <span className="text-[10px] uppercase font-bold opacity-70">{s.status}</span>
+                        </div>
+                        <p className="text-xs opacity-80 leading-snug">{s.feedback}</p>
+                      </div>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Keywords */}
+              <div className="grid gap-5 lg:grid-cols-2">
+                <div className="rounded-[24px] border border-white/10 bg-white/5 p-5">
+                  <p className="text-sm font-semibold uppercase tracking-[0.25em] text-emerald-300 mb-4">Matched Keywords</p>
+                  <div className="flex flex-wrap gap-2">
+                    {analysisResult.matched_keywords?.length > 0 ? (
+                      analysisResult.matched_keywords.map((kw) => (
+                        <span key={kw} className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-200">{kw}</span>
+                      ))
+                    ) : (
+                      <span className="text-xs text-slate-500">No matched keywords found.</span>
+                    )}
+                  </div>
+                </div>
+                <div className="rounded-[24px] border border-white/10 bg-white/5 p-5">
+                  <p className="text-sm font-semibold uppercase tracking-[0.25em] text-rose-300 mb-4">Missing Keywords</p>
+                  <div className="flex flex-wrap gap-2">
+                    {analysisResult.missing_keywords?.length > 0 ? (
+                      analysisResult.missing_keywords.map((kw) => (
+                        <span key={kw} className="rounded-full border border-rose-400/30 bg-rose-400/10 px-3 py-1 text-xs text-rose-200">{kw}</span>
+                      ))
+                    ) : (
+                      <span className="text-xs text-emerald-400">No missing keywords — great coverage!</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Formatting Issues & Recommendations */}
+              <div className="grid gap-5 lg:grid-cols-2">
+                <div className="rounded-[24px] border border-white/10 bg-white/5 p-5">
+                  <p className="text-sm font-semibold uppercase tracking-[0.25em] text-amber-300 mb-4">Formatting Issues</p>
+                  <ul className="space-y-2 text-sm text-slate-300">
+                    {analysisResult.formatting_issues?.length > 0 ? (
+                      analysisResult.formatting_issues.map((issue, idx) => (
+                        <li key={idx} className="flex items-start gap-2">
+                          <ArrowUpRight className="h-4 w-4 text-amber-300 shrink-0 mt-0.5" />
+                          <span>{issue}</span>
+                        </li>
+                      ))
+                    ) : (
+                      <li className="flex items-center gap-2 text-emerald-300">
+                        <CheckCircle2 className="h-4 w-4" /> No formatting issues detected.
+                      </li>
+                    )}
+                  </ul>
+                </div>
+                <div className="rounded-[24px] border border-white/10 bg-white/5 p-5">
+                  <p className="text-sm font-semibold uppercase tracking-[0.25em] text-violet-300 mb-4">AI Recommendations</p>
+                  <ul className="space-y-3 text-sm text-slate-300">
+                    {analysisResult.suggestions?.length > 0 ? (
+                      analysisResult.suggestions.map((sug, idx) => (
+                        <li key={idx} className="flex items-start justify-between gap-2 group">
+                          <div className="flex items-start gap-2">
+                            <Sparkles className="h-4 w-4 text-violet-300 shrink-0 mt-0.5" />
+                            <span>{sug}</span>
+                          </div>
+                          <button onClick={() => copyToClipboard(sug, idx)} title="Copy" className="ml-1 shrink-0 rounded-lg border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-slate-400 hover:text-white opacity-0 group-hover:opacity-100 transition">
+                            {copiedIdx === idx ? 'Copied!' : 'Copy'}
+                          </button>
+                        </li>
+                      ))
+                    ) : (
+                      <li className="text-slate-400">No recommendations available.</li>
+                    )}
                   </ul>
                 </div>
               </div>
+
+              {/* Bullet Point Rewrites */}
+              {analysisResult.weak_bullets?.length > 0 && (
+                <div className="rounded-[24px] border border-white/10 bg-white/5 p-5">
+                  <p className="text-sm font-semibold uppercase tracking-[0.25em] text-violet-300">AI Bullet Point Rewrites</p>
+                  <p className="mt-1 text-xs text-slate-400">Replace weak statements with quantified, action-oriented achievements.</p>
+                  <div className="mt-4 space-y-4">
+                    {analysisResult.weak_bullets.map((bullet, idx) => (
+                      <div key={idx} className="rounded-2xl border border-white/5 bg-black/25 p-4">
+                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                          <div className="flex-1 min-w-0">
+                            <span className="text-[10px] uppercase font-bold text-rose-400 bg-rose-400/10 px-2 py-0.5 rounded-full">Original</span>
+                            <p className="mt-2 text-sm text-slate-400 italic">"{bullet.original}"</p>
+                          </div>
+                          <div className="hidden md:flex items-center text-slate-500 font-bold shrink-0 pt-5">→</div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[10px] uppercase font-bold text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full">Suggested</span>
+                              <button onClick={() => copyToClipboard(bullet.suggestion, `bullet-${idx}`)} className="text-[10px] rounded-lg border border-white/10 bg-white/5 px-2 py-0.5 text-slate-400 hover:text-white transition">
+                                {copiedIdx === `bullet-${idx}` ? 'Copied!' : 'Copy'}
+                              </button>
+                            </div>
+                            <p className="mt-2 text-sm text-white font-medium">"{bullet.suggestion}"</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </motion.div>
           )}
         </motion.div>
@@ -900,73 +1229,510 @@ function MockInterviewPage({ onUsageUpdate }) {
   );
 }
 
-function SkillGapAnalysisPage({ onUsageUpdate }) {
-  const [skills, setSkills] = useState('React, Node.js, SQL');
-  const [role, setRole] = useState('AI Engineer');
+// ─── Skill Gap Analysis Page ─────────────────────────────────────────────────
+
+const ROLES = [
+  'Frontend Developer', 'Backend Developer', 'Full Stack Developer',
+  'Data Analyst', 'Data Scientist', 'ML Engineer', 'AI/ML Research Engineer',
+  'DevOps Engineer', 'Cloud Architect', 'Android Developer', 'iOS Developer',
+  'UI/UX Designer', 'Product Manager', 'Cybersecurity Analyst',
+];
+
+const PRIORITY = (w) => {
+  if (w >= 85) return { label: 'High', cls: 'border-rose-400/30 bg-rose-400/10 text-rose-300' };
+  if (w >= 70) return { label: 'Medium', cls: 'border-amber-400/30 bg-amber-400/10 text-amber-300' };
+  return { label: 'Low', cls: 'border-slate-400/30 bg-slate-400/10 text-slate-400' };
+};
+
+const CAT_COLOR = {
+  technical: 'border-violet-400/30 bg-violet-400/10 text-violet-300',
+  tool: 'border-cyan-400/30 bg-cyan-400/10 text-cyan-300',
+  soft: 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300',
+};
+
+function ReadinessRing({ score }) {
+  const r = 54;
+  const circ = 2 * Math.PI * r;
+  const offset = circ - (score / 100) * circ;
+  const color = score >= 70 ? '#34d399' : score >= 45 ? '#fbbf24' : '#f87171';
+  const label = score >= 70 ? 'Job Ready' : score >= 45 ? 'Getting There' : 'Needs Work';
   return (
-    <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-      <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr]">
-        <div className="rounded-[32px] border border-white/10 bg-white/10 p-8 backdrop-blur-2xl">
-          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-violet-300">Skill gap analysis</p>
-          <h1 className="mt-3 font-['Poppins'] text-3xl font-semibold">Compare your skills against the role you want</h1>
-          <div className="mt-8 space-y-4">
-            <input value={skills} onChange={(event) => setSkills(event.target.value)} className="w-full rounded-2xl border border-white/10 bg-[#090d20] px-4 py-3 text-white outline-none" placeholder="Current Skills: React, Node, SQL" />
-            <input value={role} onChange={(event) => setRole(event.target.value)} className="w-full rounded-2xl border border-white/10 bg-[#090d20] px-4 py-3 text-white outline-none" placeholder="Desired Role: AI Engineer" />
-            <button onClick={() => onUsageUpdate('skillGapRoadmap')} className="rounded-full bg-gradient-to-r from-violet-400 to-violet-500 px-5 py-3 font-semibold text-white">Generate Analysis</button>
-          </div>
-        </div>
-        <div className="rounded-[32px] border border-white/10 bg-[#090d20] p-8 shadow-soft">
-          <div className="mb-6 flex items-center justify-between">
-            <div>
-              <p className="text-sm text-violet-300">Skill Match</p>
-              <p className="text-3xl font-semibold text-white">84%</p>
-            </div>
-            <div className="rounded-full border border-violet-400/30 bg-violet-400/10 px-3 py-2 text-sm text-violet-200">AI Comparison</div>
-          </div>
-          <ResponsiveContainer width="100%" height={260}>
-            <RadarChart data={radarData}>
-              <PolarGrid stroke="rgba(255,255,255,0.15)" />
-              <PolarAngleAxis dataKey="subject" tick={{ fill: '#cbd5e1', fontSize: 12 }} />
-              <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} />
-              <Radar dataKey="value" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.35} />
-            </RadarChart>
-          </ResponsiveContainer>
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            {['Missing Technologies: LangChain, FastAPI', 'Estimated Time: 4 weeks', 'Learning Resources: Coursera, YouTube', 'Difficulty: Moderate'].map((item) => (
-              <div key={item} className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300">{item}</div>
-            ))}
-          </div>
-        </div>
+    <div className="relative flex items-center justify-center">
+      <svg width="140" height="140" viewBox="0 0 140 140" className="-rotate-90">
+        <circle cx="70" cy="70" r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="10" />
+        <circle cx="70" cy="70" r={r} fill="none" strokeWidth="10" strokeLinecap="round"
+          strokeDasharray={circ} strokeDashoffset={offset}
+          stroke={color} className="transition-all duration-700" />
+      </svg>
+      <div className="absolute flex flex-col items-center">
+        <span className="text-3xl font-bold text-white">{score}%</span>
+        <span className="mt-0.5 text-[11px] font-semibold" style={{ color }}>{label}</span>
       </div>
     </div>
   );
 }
 
-function RoadmapPage() {
+function SkillSkeleton() {
+  return (
+    <div className="space-y-4 animate-pulse">
+      {[1,2,3,4,5].map(i => (
+        <div key={i} className="h-16 rounded-2xl bg-white/5 border border-white/10" />
+      ))}
+    </div>
+  );
+}
+
+function SkillGapAnalysisPage({ onUsageUpdate }) {
+  const navigate = useNavigate();
+  const envSupabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+  const edgeFnUrl = envSupabaseUrl ? `${envSupabaseUrl}/functions/v1/skill-gap-analysis` : '';
+
+  const [selectedRole, setSelectedRole] = useState('');
+  const [resumeText, setResumeText] = useState('');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState('');
+  const [roleSearch, setRoleSearch] = useState('');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  const filteredRoles = ROLES.filter(r => r.toLowerCase().includes(roleSearch.toLowerCase()));
+
+  useEffect(() => {
+    const handler = (e) => { if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setDropdownOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const analyze = async () => {
+    if (!selectedRole) { setError('Please select a target role.'); return; }
+    if (resumeText.trim().length < 50) { setError('Please paste your resume text (minimum 50 characters).'); return; }
+    if (!edgeFnUrl) { setError('VITE_SUPABASE_URL is not set in .env'); return; }
+
+    onUsageUpdate('skillGapRoadmap');
+    setIsAnalyzing(true);
+    setResult(null);
+    setError('');
+
+    try {
+      const res = await fetch(edgeFnUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resume_text: resumeText, role: selectedRole }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.details || data?.error || `Error ${res.status}`);
+      setResult(data);
+    } catch (err) {
+      setError(err.message || 'Something went wrong. Try again.');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const goToRoadmap = () => {
+    if (!result) return;
+    const params = new URLSearchParams({
+      role: result.role,
+      skills: JSON.stringify(result.missing_skills.map(s => s.skill)),
+    });
+    navigate(`/learning-roadmap?${params.toString()}`);
+  };
+
+  const radarChartData = result ? [
+    { subject: 'ATS / Format', value: result.readiness_score },
+    { subject: 'Technical', value: Math.round((result.matched_skills.filter(s => s.category === 'technical').length / Math.max(1, result.total_skills_required)) * 100) },
+    { subject: 'Tools', value: Math.round((result.matched_skills.filter(s => s.category === 'tool').length / Math.max(1, (result.matched_skills.filter(s=>s.category==='tool').length + result.missing_skills.filter(s=>s.category==='tool').length))) * 100) },
+    { subject: 'Soft Skills', value: Math.round((result.matched_skills.filter(s => s.category === 'soft').length / Math.max(1, (result.matched_skills.filter(s=>s.category==='soft').length + result.missing_skills.filter(s=>s.category==='soft').length))) * 100) },
+    { subject: 'Overall', value: result.readiness_score },
+  ] : [];
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-      <div className="mb-10 text-center">
-        <p className="text-sm font-semibold uppercase tracking-[0.3em] text-violet-300">Learning roadmap</p>
-        <h1 className="mt-3 font-['Poppins'] text-3xl font-semibold">A personalized, week-by-week plan for your next move</h1>
-      </div>
-      <div className="space-y-5">
-        {roadmapData.map((week) => (
-          <div key={week.week} className="rounded-[24px] border border-white/10 bg-white/10 p-6 backdrop-blur-2xl">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="text-lg font-semibold text-white">{week.week}</p>
-                <p className="mt-1 text-sm text-slate-400">{week.topics}</p>
+      {/* Header */}
+      <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="mx-auto max-w-3xl text-center">
+        <p className="text-sm font-semibold uppercase tracking-[0.35em] text-violet-300">Skill Gap Analysis</p>
+        <h1 className="mt-4 font-['Poppins'] text-4xl font-semibold leading-tight text-white sm:text-5xl">
+          See exactly what's standing between you and your dream role
+        </h1>
+        <p className="mx-auto mt-5 max-w-2xl text-lg text-slate-300">
+          Paste your resume, pick a target role, and get a ranked list of missing skills — each with a clear reason why it matters.
+        </p>
+      </motion.div>
+
+      <div className="mt-12 grid gap-8 lg:grid-cols-[1fr_1fr]">
+        {/* ── Input Panel ─────────────────────────── */}
+        <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.4 }}
+          className="relative overflow-hidden rounded-[32px] border border-white/10 bg-white/5 p-6 backdrop-blur-2xl shadow-[0_0_60px_rgba(139,92,246,0.1)] sm:p-8">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(139,92,246,0.12),transparent_50%)]" />
+          <div className="relative space-y-6">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-violet-300">Step 1</p>
+              <h2 className="mt-1 text-xl font-semibold text-white">Select your target role</h2>
+
+              {/* Searchable dropdown */}
+              <div className="relative mt-3" ref={dropdownRef}>
+                <button onClick={() => setDropdownOpen(o => !o)}
+                  className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-[#090d20] px-4 py-3 text-left text-sm text-white transition focus:border-violet-500 focus:outline-none">
+                  <span className={selectedRole ? 'text-white' : 'text-slate-500'}>{selectedRole || 'Choose a role…'}</span>
+                  <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {dropdownOpen && (
+                  <div className="absolute z-50 mt-2 w-full rounded-2xl border border-white/10 bg-[#0a0e1a] shadow-2xl overflow-hidden">
+                    <div className="p-2 border-b border-white/10">
+                      <input autoFocus value={roleSearch} onChange={e => setRoleSearch(e.target.value)}
+                        placeholder="Search roles…"
+                        className="w-full rounded-xl bg-white/5 px-3 py-2 text-sm text-white placeholder-slate-500 outline-none" />
+                    </div>
+                    <div className="max-h-56 overflow-y-auto py-1">
+                      {filteredRoles.length === 0 && <p className="px-4 py-3 text-sm text-slate-500">No roles found</p>}
+                      {filteredRoles.map(r => (
+                        <button key={r} onClick={() => { setSelectedRole(r); setDropdownOpen(false); setRoleSearch(''); }}
+                          className={`flex w-full items-center gap-2 px-4 py-2.5 text-sm text-left transition hover:bg-violet-500/10 hover:text-white ${selectedRole === r ? 'bg-violet-500/15 text-violet-200' : 'text-slate-300'}`}>
+                          {selectedRole === r && <CheckCircle2 className="h-3.5 w-3.5 text-violet-400 shrink-0" />}
+                          {r}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="rounded-full border border-violet-400/30 bg-violet-400/10 px-3 py-2 text-sm text-violet-200">{week.progress}% complete</div>
             </div>
-            <div className="mt-4 grid gap-4 md:grid-cols-3">
-              <div className="rounded-2xl border border-white/10 bg-[#090d20] p-4"><p className="text-sm text-slate-400">Resources</p><p className="mt-1 text-sm text-white">{week.resources}</p></div>
-              <div className="rounded-2xl border border-white/10 bg-[#090d20] p-4"><p className="text-sm text-slate-400">Projects</p><p className="mt-1 text-sm text-white">{week.projects}</p></div>
-              <div className="rounded-2xl border border-white/10 bg-[#090d20] p-4"><p className="text-sm text-slate-400">Progress</p><div className="mt-2 h-2 rounded-full bg-white/10"><div className="h-2 rounded-full bg-gradient-to-r from-violet-400 to-violet-500" style={{ width: `${week.progress}%` }} /></div></div>
+
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-violet-300">Step 2</p>
+              <h2 className="mt-1 text-xl font-semibold text-white">Paste your resume text</h2>
+              <p className="mt-1 text-xs text-slate-500">Copy all text from your resume PDF and paste it here.</p>
+              <textarea value={resumeText} onChange={e => setResumeText(e.target.value)}
+                placeholder="Paste your full resume text here — work experience, skills, education, projects…"
+                className="mt-3 min-h-[220px] w-full rounded-[20px] border border-white/10 bg-[#090d20] p-4 text-sm text-slate-200 placeholder-slate-600 outline-none focus:border-violet-500/50 transition-colors resize-none" />
+              <p className="mt-1 text-right text-[11px] text-slate-600">{resumeText.length} / 8000 chars</p>
             </div>
+
+            {error && (
+              <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+                className="flex items-start gap-3 rounded-2xl border border-rose-400/30 bg-rose-400/10 px-4 py-3 text-sm text-rose-200">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-rose-400" />
+                <span>{error}</span>
+              </motion.div>
+            )}
+
+            <button onClick={analyze} disabled={isAnalyzing || !selectedRole || resumeText.trim().length < 50}
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-violet-400 via-fuchsia-400 to-fuchsia-500 px-6 py-3.5 font-semibold text-white shadow-[0_0_24px_rgba(139,92,246,0.25)] transition disabled:opacity-40 disabled:cursor-not-allowed">
+              {isAnalyzing
+                ? <><LoaderCircle className="h-4 w-4 animate-spin" /> Analyzing your profile…</>
+                : <><Sparkles className="h-4 w-4" /> Analyze Skill Gap</>}
+            </button>
           </div>
+        </motion.div>
+
+        {/* ── Results Panel ────────────────────────── */}
+        <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.4 }} className="space-y-5">
+
+          {/* Empty state */}
+          {!isAnalyzing && !result && (
+            <div className="rounded-[32px] border border-white/10 bg-[#090d20]/90 p-8 backdrop-blur-2xl">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="rounded-full border border-violet-400/30 bg-violet-400/10 p-3 text-violet-200">
+                  <BrainCircuit className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.3em] text-violet-200">Ready to analyse</p>
+                  <p className="text-base font-semibold text-white mt-0.5">Your results will appear here</p>
+                </div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {['Readiness score', 'Matched skills with evidence', 'Missing skills ranked by priority', 'Why each skill matters', 'One-click roadmap builder'].map(item => (
+                  <div key={item} className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">
+                    <CheckCircle2 className="h-4 w-4 text-violet-300 shrink-0" /> {item}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Loading skeleton */}
+          {isAnalyzing && (
+            <div className="rounded-[32px] border border-violet-400/20 bg-[#090d20]/90 p-8 backdrop-blur-2xl">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="rounded-full border border-violet-400/30 bg-violet-400/10 p-3 text-violet-200">
+                  <LoaderCircle className="h-5 w-5 animate-spin" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.3em] text-violet-300">Analysing…</p>
+                  <p className="text-base font-semibold text-white mt-0.5">Extracting skills from your resume</p>
+                </div>
+              </div>
+              <SkillSkeleton />
+            </div>
+          )}
+
+          {/* Results */}
+          {result && !isAnalyzing && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
+
+              {/* Score card */}
+              <div className="rounded-[32px] border border-white/10 bg-[#090d20]/95 p-6 backdrop-blur-2xl shadow-[0_0_50px_rgba(139,92,246,0.12)]">
+                <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start">
+                  <ReadinessRing score={result.readiness_score} />
+                  <div className="flex-1 w-full">
+                    <p className="text-xs font-semibold uppercase tracking-[0.3em] text-violet-300 mb-1">Target Role</p>
+                    <h3 className="text-2xl font-semibold text-white">{result.role}</h3>
+                    <div className="mt-4 grid grid-cols-3 gap-3">
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-center">
+                        <p className="text-2xl font-bold text-emerald-300">{result.matched_skills.length}</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Matched</p>
+                      </div>
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-center">
+                        <p className="text-2xl font-bold text-rose-300">{result.missing_skills.length}</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Missing</p>
+                      </div>
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-center">
+                        <p className="text-2xl font-bold text-violet-300">{result.total_skills_required}</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Required</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Radar chart */}
+              <div className="rounded-[28px] border border-white/10 bg-[#090d20]/90 p-5 backdrop-blur-2xl">
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-violet-300 mb-4">Skill Profile</p>
+                <ResponsiveContainer width="100%" height={220}>
+                  <RadarChart data={radarChartData}>
+                    <PolarGrid stroke="rgba(255,255,255,0.12)" />
+                    <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} />
+                    <Radar dataKey="value" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.3} />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Missing skills */}
+              {result.missing_skills.length > 0 && (
+                <div className="rounded-[28px] border border-white/10 bg-[#090d20]/90 p-5 backdrop-blur-2xl">
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-sm font-semibold uppercase tracking-[0.25em] text-rose-300">Missing Skills</p>
+                    <span className="text-xs text-slate-500">sorted by importance</span>
+                  </div>
+                  <div className="space-y-3">
+                    {result.missing_skills.map((s, i) => {
+                      const pri = PRIORITY(s.importance_weight);
+                      const cat = CAT_COLOR[s.category] || CAT_COLOR.technical;
+                      return (
+                        <motion.div key={s.skill} initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }}
+                          className="rounded-2xl border border-white/8 bg-white/5 p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex flex-wrap items-center gap-2 mb-1">
+                                <span className="font-semibold text-white text-sm">{s.skill}</span>
+                                <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${pri.cls}`}>{pri.label}</span>
+                                <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold capitalize ${cat}`}>{s.category}</span>
+                              </div>
+                              <p className="text-xs text-slate-400 leading-relaxed">{s.why_it_matters}</p>
+                            </div>
+                            <div className="shrink-0 text-right">
+                              <span className="text-xs font-bold text-slate-400">{s.importance_weight}</span>
+                              <p className="text-[10px] text-slate-600">/ 100</p>
+                            </div>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Matched skills */}
+              {result.matched_skills.length > 0 && (
+                <div className="rounded-[28px] border border-white/10 bg-[#090d20]/90 p-5 backdrop-blur-2xl">
+                  <p className="text-sm font-semibold uppercase tracking-[0.25em] text-emerald-300 mb-4">Matched Skills</p>
+                  <div className="flex flex-wrap gap-2">
+                    {result.matched_skills.map(s => (
+                      <div key={s.skill} title={s.evidence}
+                        className="group relative rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1.5 text-xs font-semibold text-emerald-200 cursor-default">
+                        <CheckCircle2 className="inline h-3 w-3 mr-1.5 text-emerald-400" />{s.skill}
+                        {s.evidence && (
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 rounded-xl border border-white/10 bg-[#0a0e1a] p-2.5 text-[11px] text-slate-300 leading-snug opacity-0 group-hover:opacity-100 pointer-events-none transition z-50 shadow-2xl">
+                            {s.evidence}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* CTA — Build Roadmap */}
+              <motion.button whileHover={{ scale: 1.02 }} onClick={goToRoadmap}
+                className="flex w-full items-center justify-center gap-3 rounded-full bg-gradient-to-r from-violet-400 via-fuchsia-400 to-fuchsia-500 px-6 py-4 font-semibold text-white shadow-[0_0_32px_rgba(139,92,246,0.3)] transition">
+                <GraduationCap className="h-5 w-5" />
+                Build my Learning Roadmap
+                <ArrowRight className="h-4 w-4" />
+              </motion.button>
+
+              {/* Retry */}
+              <button onClick={() => { setResult(null); setResumeText(''); setSelectedRole(''); }}
+                className="flex w-full items-center justify-center gap-2 rounded-full border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-slate-300 hover:text-white transition">
+                <RefreshCw className="h-4 w-4" /> Analyse a different role
+              </button>
+
+            </motion.div>
+          )}
+        </motion.div>
+      </div>
+    </div>
+  );
+}
+
+// Resource map per skill category
+const RESOURCE_MAP = {
+  technical: { platform: 'freeCodeCamp / MDN / official docs', type: 'Guided practice + documentation' },
+  tool: { platform: 'Official docs + YouTube tutorials', type: 'Hands-on project setup' },
+  soft: { platform: 'Coursera / LinkedIn Learning', type: 'Video course + exercises' },
+};
+
+const DIFFICULTY_MAP = (w) => w >= 85 ? 'Hard' : w >= 65 ? 'Moderate' : 'Beginner-friendly';
+const WEEKS_MAP = (w) => w >= 85 ? '3–4 weeks' : w >= 65 ? '1–2 weeks' : '3–5 days';
+
+function RoadmapPage() {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const roleParam = params.get('role') || '';
+  let skillsParam = [];
+  try { skillsParam = JSON.parse(params.get('skills') || '[]'); } catch { skillsParam = []; }
+
+  // If skills came from skill gap CTA, use them; otherwise fall back to static demo
+  const hasSkillData = skillsParam.length > 0;
+
+  // Build dynamic weeks from missing skills (group into batches of 2)
+  const dynamicWeeks = [];
+  if (hasSkillData) {
+    for (let i = 0; i < skillsParam.length; i += 2) {
+      const batch = skillsParam.slice(i, i + 2);
+      dynamicWeeks.push({
+        week: `Week ${Math.floor(i / 2) + 1}`,
+        skills: batch,
+        focus: batch.join(' + '),
+      });
+    }
+  }
+
+  const weeksToShow = hasSkillData ? dynamicWeeks : roadmapData.map(w => ({ ...w, skills: [], focus: w.topics }));
+
+  return (
+    <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+      {/* Header */}
+      <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="mb-10 text-center">
+        <p className="text-sm font-semibold uppercase tracking-[0.3em] text-violet-300">Learning Roadmap</p>
+        <h1 className="mt-3 font-['Poppins'] text-3xl font-semibold sm:text-4xl">
+          {roleParam ? `Your roadmap to ${roleParam}` : 'A personalized, week-by-week plan for your next move'}
+        </h1>
+        {hasSkillData && (
+          <p className="mt-3 text-slate-400">
+            {skillsParam.length} missing skills · {weeksToShow.length} week{weeksToShow.length !== 1 ? 's' : ''} plan
+          </p>
+        )}
+      </motion.div>
+
+      {/* Skills to learn pill row */}
+      {hasSkillData && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+          className="mb-8 rounded-[24px] border border-violet-400/20 bg-violet-400/5 p-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-violet-300 mb-3">Skills to Master</p>
+          <div className="flex flex-wrap gap-2">
+            {skillsParam.map((s, i) => (
+              <span key={s} className="flex items-center gap-1.5 rounded-full border border-violet-400/30 bg-violet-400/10 px-3 py-1 text-xs font-semibold text-violet-200">
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-violet-400/20 text-[9px] font-bold text-violet-300">{i + 1}</span>
+                {s}
+              </span>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Week cards */}
+      <div className="space-y-5">
+        {weeksToShow.map((week, idx) => (
+          <motion.div key={week.week}
+            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.07 }}
+            className="rounded-[28px] border border-white/10 bg-white/5 p-6 backdrop-blur-2xl">
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-400 to-fuchsia-500 text-sm font-bold text-white">
+                    {idx + 1}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-white text-lg">{week.week}</p>
+                    <p className="text-sm text-slate-400">{week.focus}</p>
+                  </div>
+                </div>
+
+                {/* Skill chips for this week */}
+                {week.skills?.length > 0 && (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {week.skills.map(s => (
+                      <span key={s} className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-slate-300">
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {hasSkillData && (
+                <div className="flex flex-wrap gap-2 shrink-0">
+                  <span className="rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-xs font-semibold text-amber-300">
+                    {WEEKS_MAP(90 - idx * 10)}
+                  </span>
+                  <span className="rounded-full border border-violet-400/30 bg-violet-400/10 px-3 py-1 text-xs font-semibold text-violet-300">
+                    {DIFFICULTY_MAP(90 - idx * 10)}
+                  </span>
+                </div>
+              )}
+
+              {!hasSkillData && (
+                <div className="rounded-full border border-violet-400/30 bg-violet-400/10 px-3 py-2 text-sm text-violet-200 shrink-0">
+                  {week.progress}% complete
+                </div>
+              )}
+            </div>
+
+            <div className="mt-5 grid gap-4 md:grid-cols-3">
+              <div className="rounded-2xl border border-white/10 bg-[#090d20] p-4">
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Resources</p>
+                <p className="text-sm text-white">{hasSkillData ? RESOURCE_MAP[idx % 2 === 0 ? 'technical' : 'tool'].platform : week.resources}</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-[#090d20] p-4">
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Practice</p>
+                <p className="text-sm text-white">{hasSkillData ? `Build a project using ${week.skills?.[0] || 'this skill'}` : week.projects}</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-[#090d20] p-4">
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Progress</p>
+                <div className="mt-2 h-2 rounded-full bg-white/10">
+                  <div className="h-2 rounded-full bg-gradient-to-r from-violet-400 to-fuchsia-500"
+                    style={{ width: hasSkillData ? `${Math.max(5, 100 - idx * 20)}%` : `${week.progress}%` }} />
+                </div>
+                <p className="mt-1 text-[11px] text-slate-600">{hasSkillData ? `${Math.max(5, 100 - idx * 20)}% avg completion` : `${week.progress}%`}</p>
+              </div>
+            </div>
+          </motion.div>
         ))}
       </div>
+
+      {/* CTA back to skill gap */}
+      {hasSkillData && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+          className="mt-8 rounded-[28px] border border-violet-400/20 bg-gradient-to-br from-violet-500/10 to-fuchsia-500/10 p-6 text-center">
+          <p className="text-sm font-semibold text-violet-200">Want to re-analyse with a different role?</p>
+          <Link to="/skill-gap-analysis"
+            className="mt-3 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-400 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white">
+            <RefreshCw className="h-4 w-4" /> Back to Skill Gap Analysis
+          </Link>
+        </motion.div>
+      )}
     </div>
   );
 }

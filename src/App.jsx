@@ -1,6 +1,8 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import { Routes, Route, Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { saveRoadmap, getSavedRoadmaps, updateRoadmap, deleteRoadmap, getUsageMetrics, bumpUsageMetric, saveResumeAnalysis, getResumeAnalyses } from './lib/db.js';
+import { supabase } from './lib/supabase.js';
 import {
   AlertCircle,
   ArrowRight,
@@ -29,7 +31,17 @@ import {
   Trophy,
   UploadCloud,
   UserCircle2,
-  X
+  X,
+  BookMarked,
+  Trash2,
+  Pencil,
+  PlusCircle,
+  Eye,
+  EyeOff,
+  BarChart2,
+  Clock,
+  MapPin,
+  LogOut
 } from 'lucide-react';
 import { LineChart, Line, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 
@@ -155,16 +167,41 @@ function MainLayout() {
   const [chatOpen, setChatOpen] = useState(false);
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
   const [usageMetrics, setUsageMetrics] = useState(readUsage);
+  const [session, setSession] = useState(null);
+  const [sessionLoading, setSessionLoading] = useState(true);
   const location = useLocation();
 
-  const navItems = ['Resume Analyzer', 'Mock Interview', 'Skill Gap Analysis', 'Learning Roadmap', 'Dashboard'];
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setSessionLoading(false);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const navItems = ['Resume Analyzer', 'Mock Interview', 'Skill Gap Analysis', 'Learning Roadmap', 'My Roadmaps', 'Dashboard'];
 
   const bumpUsage = (key) => {
+    // Update local state immediately for instant UI feedback
     setUsageMetrics((prev) => {
-      const next = { ...prev, [key]: prev[key] + 1 };
+      const next = { ...prev, [key]: (prev[key] || 0) + 1 };
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       return next;
     });
+    // Persist to Supabase in the background
+    const fieldMap = {
+      resumeAnalyzer: 'resume_analyzer_count',
+      mockInterview: 'mock_interview_count',
+      skillGapRoadmap: 'skill_gap_count',
+      internshipRecommendation: 'internship_count',
+    };
+    const field = fieldMap[key];
+    if (field) {
+      bumpUsageMetric(field).catch(err => console.error('[bumpUsage] Supabase error:', err));
+    }
   };
 
   useEffect(() => {
@@ -212,8 +249,19 @@ function MainLayout() {
               <button onClick={() => setDarkMode(!darkMode)} className={`rounded-full border p-2 ${darkMode ? 'border-white/10 bg-white/10 text-slate-200' : 'border-slate-200 bg-white/80 text-slate-700'}`}>
                 {darkMode ? <SunMedium className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </button>
-              <Link to="/login" className={`rounded-full border px-4 py-2 text-sm ${darkMode ? 'border-white/10' : 'border-slate-200'}`}>Login</Link>
-              <Link to="/signup" className="rounded-full bg-gradient-to-r from-violet-400 to-violet-500 px-4 py-2 text-sm font-semibold text-white">Sign Up</Link>
+              {session ? (
+                <>
+                  <span className="max-w-[160px] truncate text-sm text-slate-300">{session.user.email}</span>
+                  <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm text-slate-200 hover:text-white transition">
+                    <LogOut className="h-3.5 w-3.5" /> Sign Out
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link to="/login" className={`rounded-full border px-4 py-2 text-sm ${darkMode ? 'border-white/10' : 'border-slate-200'}`}>Login</Link>
+                  <Link to="/signup" className="rounded-full bg-gradient-to-r from-violet-400 to-violet-500 px-4 py-2 text-sm font-semibold text-white">Sign Up</Link>
+                </>
+              )}
             </div>
             <button onClick={() => setMenuOpen(!menuOpen)} className="rounded-full border border-white/10 bg-white/10 p-2 lg:hidden">
               {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -241,6 +289,7 @@ function MainLayout() {
                 <Route path="/skill-gap-analysis" element={<SkillGapAnalysisPage onUsageUpdate={bumpUsage} />} />
                 <Route path="/learning-roadmap" element={<RoadmapPage />} />
                 <Route path="/dashboard" element={<DashboardPage usageMetrics={usageMetrics} />} />
+                <Route path="/my-roadmaps" element={<SavedRoadmapsPage />} />
                 <Route path="/pricing" element={<PricingPage onUsageUpdate={bumpUsage} />} />
                 <Route path="/about" element={<AboutPage />} />
                 <Route path="/contact" element={<ContactPage />} />
@@ -292,6 +341,7 @@ function MainLayout() {
                 <Link to="/resume-analyzer" className="hover:text-[#8b5cf6]">Resume Analyzer</Link>
                 <Link to="/mock-interview" className="hover:text-[#8b5cf6]">Mock Interviews</Link>
                 <Link to="/skill-gap-analysis" className="hover:text-[#8b5cf6]">Skill Gap Analysis</Link>
+                <Link to="/my-roadmaps" className="hover:text-[#8b5cf6]">My Roadmaps</Link>
                 <Link to="/pricing" className="hover:text-[#8b5cf6]">Pricing</Link>
                 <Link to="/about" className="hover:text-[#8b5cf6]">About</Link>
                 <Link to="/contact" className="hover:text-[#8b5cf6]">Contact</Link>
@@ -736,6 +786,8 @@ function ResumeAnalyzerPage({ onUsageUpdate }) {
       setProcessingStep(steps.length - 1);
       setProgress(100);
       setAnalysisResult(responseData);
+      // Persist analysis to Supabase (fire and forget — don't block the UI)
+      saveResumeAnalysis(uploadedFile.name, responseData).catch(console.error);
 
       setTimeout(() => {
         setShowAnalysis(true);
@@ -1598,13 +1650,17 @@ const WEEKS_MAP = (w) => w >= 85 ? '3–4 weeks' : w >= 65 ? '1–2 weeks' : '3�
 
 function RoadmapPage() {
   const location = useLocation();
+  const navigate = useNavigate();
   const params = new URLSearchParams(location.search);
   const roleParam = params.get('role') || '';
   let skillsParam = [];
   try { skillsParam = JSON.parse(params.get('skills') || '[]'); } catch { skillsParam = []; }
 
-  // If skills came from skill gap CTA, use them; otherwise fall back to static demo
   const hasSkillData = skillsParam.length > 0;
+  const [saveState, setSaveState] = useState('idle'); // idle | saving | saved | error
+  const [savedId, setSavedId] = useState(null);
+  const [titleInput, setTitleInput] = useState('');
+  const [showTitleModal, setShowTitleModal] = useState(false);
 
   // Build dynamic weeks from missing skills (group into batches of 2)
   const dynamicWeeks = [];
@@ -1621,6 +1677,29 @@ function RoadmapPage() {
 
   const weeksToShow = hasSkillData ? dynamicWeeks : roadmapData.map(w => ({ ...w, skills: [], focus: w.topics }));
 
+  const handleSave = async () => {
+    const title = titleInput.trim() || `${roleParam} Roadmap`;
+    setSaveState('saving');
+    setShowTitleModal(false);
+    try {
+      const saved = await saveRoadmap({
+        title,
+        role: roleParam,
+        skills: skillsParam,
+        weeks: weeksToShow,
+      });
+      if (saved) {
+        setSavedId(saved.id);
+        setSaveState('saved');
+      } else {
+        setSaveState('error');
+      }
+    } catch (e) {
+      console.error(e);
+      setSaveState('error');
+    }
+  };
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
       {/* Header */}
@@ -1633,6 +1712,48 @@ function RoadmapPage() {
           <p className="mt-3 text-slate-400">
             {skillsParam.length} missing skills · {weeksToShow.length} week{weeksToShow.length !== 1 ? 's' : ''} plan
           </p>
+        )}
+        {hasSkillData && (
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+            {saveState === 'saved' ? (
+              <div className="flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-5 py-2.5 text-sm font-semibold text-emerald-200">
+                <BookMarked className="h-4 w-4" /> Roadmap Saved!
+                <button onClick={() => navigate('/my-roadmaps')} className="ml-2 underline text-violet-300 hover:text-violet-200">View all</button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowTitleModal(true)}
+                disabled={saveState === 'saving'}
+                className="flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-400 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_0_20px_rgba(139,92,246,0.25)] disabled:opacity-50 transition">
+                {saveState === 'saving'
+                  ? <><LoaderCircle className="h-4 w-4 animate-spin" /> Saving…</>
+                  : <><BookMarked className="h-4 w-4" /> Save this Roadmap</>}
+              </button>
+            )}
+            {saveState === 'error' && (
+              <p className="text-xs text-rose-300">Save failed — check your connection and try again.</p>
+            )}
+          </div>
+        )}
+        {showTitleModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+            <motion.div initial={{ scale: 0.95, y: 10 }} animate={{ scale: 1, y: 0 }} className="w-full max-w-md rounded-[28px] border border-white/10 bg-[#0a0e1a] p-6 shadow-2xl">
+              <h3 className="text-xl font-semibold text-white mb-1">Name your roadmap</h3>
+              <p className="text-sm text-slate-400 mb-4">Give it a name so you can find it later.</p>
+              <input
+                autoFocus
+                value={titleInput}
+                onChange={e => setTitleInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSave()}
+                placeholder={`${roleParam} Roadmap`}
+                className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-slate-500 outline-none focus:border-violet-500 text-sm"
+              />
+              <div className="mt-4 flex gap-3">
+                <button onClick={handleSave} className="flex-1 rounded-full bg-gradient-to-r from-violet-400 to-fuchsia-500 py-2.5 text-sm font-semibold text-white">Save Roadmap</button>
+                <button onClick={() => setShowTitleModal(false)} className="flex-1 rounded-full border border-white/10 bg-white/5 py-2.5 text-sm font-semibold text-slate-300">Cancel</button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </motion.div>
 
@@ -1737,56 +1858,422 @@ function RoadmapPage() {
   );
 }
 
-function DashboardPage({ usageMetrics }) {
+function SavedRoadmapsPage() {
+  const navigate = useNavigate();
+  const [roadmaps, setRoadmaps] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [editingId, setEditingId] = useState(null);
+  const [editNotes, setEditNotes] = useState('');
+  const [deletingId, setDeletingId] = useState(null);
+
+  const load = async () => {
+    setLoading(true);
+    const data = await getSavedRoadmaps();
+    setRoadmaps(data);
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const handleDelete = async (id) => {
+    setDeletingId(id);
+    await deleteRoadmap(id);
+    setRoadmaps(prev => prev.filter(r => r.id !== id));
+    setDeletingId(null);
+  };
+
+  const handleUpdateNotes = async (id) => {
+    await updateRoadmap(id, { notes: editNotes });
+    setRoadmaps(prev => prev.map(r => r.id === id ? { ...r, notes: editNotes } : r));
+    setEditingId(null);
+  };
+
+  const handleUpdateProgress = async (id, pct) => {
+    await updateRoadmap(id, { progress_pct: pct });
+    setRoadmaps(prev => prev.map(r => r.id === id ? { ...r, progress_pct: pct } : r));
+  };
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-      <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
-        <div className="rounded-[24px] border border-white/10 bg-white/10 p-6 backdrop-blur-2xl">
-          <h3 className="font-semibold text-white">Dashboard</h3>
-          <div className="mt-6 space-y-3 text-sm text-slate-300">
-            {['Dashboard', 'Resume', 'Interviews', 'Roadmaps', 'Analytics', 'Settings'].map((item) => (
-              <div key={item} className="rounded-2xl border border-white/10 bg-[#090d20] px-4 py-3">{item}</div>
-            ))}
+      <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="mb-10">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.35em] text-violet-300">My Roadmaps</p>
+            <h1 className="mt-2 font-['Poppins'] text-4xl font-semibold text-white">Saved Learning Roadmaps</h1>
+            <p className="mt-2 text-slate-400">Track, update, and revisit your personalized learning plans.</p>
           </div>
+          <Link to="/skill-gap-analysis" className="flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-400 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white">
+            <PlusCircle className="h-4 w-4" /> New Roadmap
+          </Link>
         </div>
-        <div className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-4">
-            {[
-              ['Resume Analyzer', `${usageMetrics.resumeAnalyzer} uses`], ['Mock Interview', `${usageMetrics.mockInterview} runs`], ['Skill Gap Roadmap', `${usageMetrics.skillGapRoadmap} analyses`], ['Internship Recommendations', `${usageMetrics.internshipRecommendation} requests`]
-            ].map(([label, value]) => (
-              <div key={label} className="rounded-[24px] border border-white/10 bg-white/10 p-5 backdrop-blur-2xl">
-                <p className="text-sm text-slate-400">{label}</p>
-                <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
+      </motion.div>
+
+      {loading && (
+        <div className="space-y-4 animate-pulse">
+          {[1,2,3].map(i => <div key={i} className="h-40 rounded-[28px] bg-white/5 border border-white/10" />)}
+        </div>
+      )}
+
+      {!loading && roadmaps.length === 0 && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+          className="rounded-[32px] border border-white/10 bg-white/5 p-16 text-center backdrop-blur-2xl">
+          <BookMarked className="mx-auto h-12 w-12 text-violet-400/40 mb-4" />
+          <h3 className="text-xl font-semibold text-white mb-2">No saved roadmaps yet</h3>
+          <p className="text-slate-400 mb-6">Run a Skill Gap Analysis and save your roadmap to see it here.</p>
+          <Link to="/skill-gap-analysis"
+            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-400 to-fuchsia-500 px-6 py-3 text-sm font-semibold text-white">
+            <PlusCircle className="h-4 w-4" /> Start Skill Gap Analysis
+          </Link>
+        </motion.div>
+      )}
+
+      <div className="space-y-6">
+        {roadmaps.map((rm, idx) => (
+          <motion.div key={rm.id}
+            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.06 }}
+            className="rounded-[28px] border border-white/10 bg-[#090d20]/90 p-6 backdrop-blur-2xl shadow-[0_0_40px_rgba(139,92,246,0.06)]">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap items-center gap-2 mb-1">
+                  <h3 className="text-xl font-semibold text-white">{rm.title}</h3>
+                  <span className="rounded-full border border-violet-400/30 bg-violet-400/10 px-2 py-0.5 text-xs font-semibold text-violet-300">{rm.role}</span>
+                </div>
+                <div className="flex flex-wrap gap-3 text-xs text-slate-500 mt-1">
+                  <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {new Date(rm.created_at).toLocaleDateString()}</span>
+                  <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {rm.skills?.length || 0} skills</span>
+                  <span className="flex items-center gap-1"><BarChart2 className="h-3 w-3" /> {Array.isArray(rm.weeks) ? rm.weeks.length : 0} weeks</span>
+                </div>
               </div>
-            ))}
+              <div className="flex flex-wrap gap-2 shrink-0">
+                <button
+                  onClick={() => navigate(`/learning-roadmap?role=${encodeURIComponent(rm.role)}&skills=${encodeURIComponent(JSON.stringify(rm.skills || []))}`)}
+                  className="flex items-center gap-1.5 rounded-full border border-violet-400/30 bg-violet-400/10 px-3 py-1.5 text-xs font-semibold text-violet-200 hover:bg-violet-400/20 transition">
+                  <Eye className="h-3.5 w-3.5" /> View
+                </button>
+                <button
+                  onClick={() => { setEditingId(rm.id); setEditNotes(rm.notes || ''); }}
+                  className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white transition">
+                  <Pencil className="h-3.5 w-3.5" /> Notes
+                </button>
+                <button
+                  onClick={() => handleDelete(rm.id)}
+                  disabled={deletingId === rm.id}
+                  className="flex items-center gap-1.5 rounded-full border border-rose-400/20 bg-rose-400/5 px-3 py-1.5 text-xs font-semibold text-rose-300 hover:bg-rose-400/15 transition disabled:opacity-40">
+                  {deletingId === rm.id ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Progress bar */}
+            <div className="mt-5">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs text-slate-400">Overall Progress</span>
+                <span className="text-xs font-semibold text-violet-300">{rm.progress_pct}%</span>
+              </div>
+              <div className="h-2 rounded-full bg-white/10 cursor-pointer" onClick={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const pct = Math.round(((e.clientX - rect.left) / rect.width) * 100);
+                handleUpdateProgress(rm.id, Math.min(100, Math.max(0, pct)));
+              }}>
+                <div className="h-2 rounded-full bg-gradient-to-r from-violet-400 to-fuchsia-500 transition-all duration-300"
+                  style={{ width: `${rm.progress_pct}%` }} />
+              </div>
+              <p className="mt-1 text-[10px] text-slate-600">Click the bar to update progress</p>
+            </div>
+
+            {/* Skills pills */}
+            {rm.skills?.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {rm.skills.slice(0, 8).map(s => (
+                  <span key={s} className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-slate-400">{s}</span>
+                ))}
+                {rm.skills.length > 8 && <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-slate-500">+{rm.skills.length - 8} more</span>}
+              </div>
+            )}
+
+            {/* Notes editor */}
+            {editingId === rm.id && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-4 border-t border-white/5 pt-4">
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Notes</p>
+                <textarea
+                  value={editNotes}
+                  onChange={e => setEditNotes(e.target.value)}
+                  placeholder="Add notes, links, or reminders for this roadmap…"
+                  className="w-full min-h-[100px] rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-slate-200 placeholder-slate-600 outline-none focus:border-violet-500 resize-none"
+                />
+                <div className="mt-3 flex gap-2">
+                  <button onClick={() => handleUpdateNotes(rm.id)} className="rounded-full bg-gradient-to-r from-violet-400 to-fuchsia-500 px-4 py-2 text-xs font-semibold text-white">Save Notes</button>
+                  <button onClick={() => setEditingId(null)} className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-slate-400">Cancel</button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Show existing notes if not editing */}
+            {rm.notes && editingId !== rm.id && (
+              <div className="mt-4 rounded-2xl border border-white/5 bg-white/5 p-3 text-xs text-slate-400 leading-relaxed">
+                {rm.notes}
+              </div>
+            )}
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DashboardPage({ usageMetrics: localMetrics }) {
+  const navigate = useNavigate();
+  const [dbMetrics, setDbMetrics] = useState(null);
+  const [recentAnalyses, setRecentAnalyses] = useState([]);
+  const [savedRoadmapsCount, setSavedRoadmapsCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [session, setSession] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase.auth.getSession().then(({ data: { session: s } }) => {
+      if (!cancelled) setSession(s);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, s) => {
+      if (!cancelled) setSession(s);
+    });
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      const [metrics, analyses, roadmaps] = await Promise.all([
+        getUsageMetrics(),
+        getResumeAnalyses(5),
+        getSavedRoadmaps(),
+      ]);
+      setDbMetrics(metrics);
+      setRecentAnalyses(analyses);
+      setSavedRoadmapsCount(roadmaps.length);
+      setLoading(false);
+    };
+    load();
+  }, [session]);
+
+  const resumeCount = dbMetrics?.resume_analyzer_count ?? localMetrics.resumeAnalyzer;
+  const mockCount = dbMetrics?.mock_interview_count ?? localMetrics.mockInterview;
+  const skillGapCount = dbMetrics?.skill_gap_count ?? localMetrics.skillGapRoadmap;
+  const internshipCount = dbMetrics?.internship_count ?? localMetrics.internshipRecommendation;
+
+  const statCards = [
+    { label: 'Resume Analyses', value: resumeCount, icon: FileText, color: 'text-violet-300', bg: 'bg-violet-400/10 border-violet-400/30', link: '/resume-analyzer' },
+    { label: 'Mock Interviews', value: mockCount, icon: BrainCircuit, color: 'text-cyan-300', bg: 'bg-cyan-400/10 border-cyan-400/30', link: '/mock-interview' },
+    { label: 'Skill Gap Analyses', value: skillGapCount, icon: BarChart2, color: 'text-emerald-300', bg: 'bg-emerald-400/10 border-emerald-400/30', link: '/skill-gap-analysis' },
+    { label: 'Saved Roadmaps', value: savedRoadmapsCount, icon: BookMarked, color: 'text-fuchsia-300', bg: 'bg-fuchsia-400/10 border-fuchsia-400/30', link: '/my-roadmaps' },
+  ];
+
+  const avgScore = recentAnalyses.length > 0
+    ? Math.round(recentAnalyses.reduce((s, a) => s + (a.overall_score || 0), 0) / recentAnalyses.length)
+    : null;
+
+  const scoreChartData = recentAnalyses
+    .slice()
+    .reverse()
+    .map((a, i) => ({ name: `#${i + 1}`, score: a.overall_score || 0 }));
+
+  return (
+    <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+      {/* Header */}
+      <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="mb-10">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.35em] text-violet-300">Dashboard</p>
+            <h1 className="mt-2 font-['Poppins'] text-4xl font-semibold text-white">
+              {session ? `Welcome back, ${session.user.email.split('@')[0]}` : 'Your Activity'}
+            </h1>
+            <p className="mt-1 text-slate-400 text-sm">
+              {session ? 'Your data is saved to your account across all devices.' : 'Sign in to sync your data across devices.'}
+            </p>
           </div>
-          <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-            <div className="rounded-[24px] border border-white/10 bg-[#090d20] p-6">
-              <div className="mb-4 flex items-center justify-between">
-                <h3 className="font-semibold text-white">Weekly activity</h3>
-                <div className="text-sm text-violet-300">+12%</div>
+          {!session && (
+            <Link to="/login" className="flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-400 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white self-start">
+              Sign in to sync data
+            </Link>
+          )}
+        </div>
+      </motion.div>
+
+      {/* Stat cards */}
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+        {statCards.map(({ label, value, icon: Icon, color, bg, link }, i) => (
+          <motion.div key={label}
+            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
+            onClick={() => navigate(link)}
+            className="cursor-pointer rounded-[24px] border border-white/10 bg-[#090d20]/90 p-5 backdrop-blur-2xl hover:border-white/20 transition group">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs text-slate-500 uppercase tracking-wider">{label}</p>
+                <p className={`mt-2 text-4xl font-bold ${color}`}>
+                  {loading ? <span className="inline-block h-8 w-12 animate-pulse rounded-lg bg-white/10" /> : value}
+                </p>
               </div>
-              <ResponsiveContainer width="100%" height={240}>
-                <LineChart data={analyticsData}>
-                  <CartesianGrid stroke="rgba(255,255,255,0.1)" />
-                  <XAxis dataKey="name" tick={{ fill: '#cbd5e1', fontSize: 12 }} />
-                  <YAxis tick={{ fill: '#cbd5e1', fontSize: 12 }} />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="score" stroke="#8b5cf6" strokeWidth={3} />
+              <div className={`rounded-full border p-2.5 ${bg}`}>
+                <Icon className={`h-5 w-5 ${color}`} />
+              </div>
+            </div>
+            <p className="mt-3 text-xs text-slate-500 group-hover:text-violet-400 transition flex items-center gap-1">
+              Go to feature <ArrowRight className="h-3 w-3" />
+            </p>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Tabs */}
+      <div className="mb-6 flex gap-2 rounded-2xl bg-white/5 border border-white/10 p-1 w-fit">
+        {['overview', 'resume history'].map(tab => (
+          <button key={tab} onClick={() => setActiveTab(tab)}
+            className={`rounded-xl px-4 py-2 text-sm font-semibold capitalize transition ${activeTab === tab ? 'bg-gradient-to-r from-violet-400 to-fuchsia-500 text-white' : 'text-slate-400 hover:text-white'}`}>
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'overview' && (
+        <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+          {/* Resume score chart */}
+          <div className="rounded-[24px] border border-white/10 bg-[#090d20] p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="font-semibold text-white">Resume Score History</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Your last {recentAnalyses.length} analyses</p>
+              </div>
+              {avgScore !== null && (
+                <div className="text-right">
+                  <p className="text-xs text-slate-500">Avg score</p>
+                  <p className={`text-2xl font-bold ${avgScore >= 70 ? 'text-emerald-300' : avgScore >= 50 ? 'text-amber-300' : 'text-rose-300'}`}>{avgScore}</p>
+                </div>
+              )}
+            </div>
+            {loading ? (
+              <div className="h-48 animate-pulse rounded-2xl bg-white/5" />
+            ) : scoreChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={200}>
+                <LineChart data={scoreChartData}>
+                  <CartesianGrid stroke="rgba(255,255,255,0.07)" />
+                  <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                  <YAxis domain={[0, 100]} tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                  <Tooltip contentStyle={{ background: '#0a0e1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, color: '#e2e8f0' }} />
+                  <Line type="monotone" dataKey="score" stroke="#8b5cf6" strokeWidth={2.5} dot={{ fill: '#8b5cf6', r: 4 }} activeDot={{ r: 6 }} />
                 </LineChart>
               </ResponsiveContainer>
-            </div>
-            <div className="rounded-[24px] border border-white/10 bg-white/10 p-6 backdrop-blur-2xl">
-              <h3 className="font-semibold text-white">Achievements</h3>
-              <div className="mt-4 space-y-3 text-sm text-slate-300">
-                {['Resume Master', 'Interview Ready', 'Roadmap Finisher'].map((item) => (
-                  <div key={item} className="flex items-center gap-2 rounded-2xl border border-white/10 bg-[#090d20] px-3 py-3"><Trophy className="h-4 w-4 text-violet-300" /> {item}</div>
+            ) : (
+              <div className="h-48 flex flex-col items-center justify-center text-center rounded-2xl border border-dashed border-white/10">
+                <FileText className="h-8 w-8 text-violet-400/40 mb-2" />
+                <p className="text-slate-500 text-sm">No resume analyses yet</p>
+                <Link to="/resume-analyzer" className="mt-3 text-xs text-violet-300 hover:text-violet-200">Analyse your first resume →</Link>
+              </div>
+            )}
+          </div>
+
+          {/* Quick actions + profile */}
+          <div className="space-y-5">
+            {session && (
+              <div className="rounded-[24px] border border-violet-400/20 bg-violet-400/5 p-5">
+                <p className="text-xs font-semibold uppercase tracking-wider text-violet-300 mb-3">Account</p>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-400 to-fuchsia-500 text-sm font-bold text-white uppercase">
+                    {session.user.email[0]}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-white truncate">{session.user.email}</p>
+                    <p className="text-xs text-slate-500">Joined {new Date(session.user.created_at).toLocaleDateString()}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="rounded-[24px] border border-white/10 bg-[#090d20] p-5">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-4">Quick Actions</p>
+              <div className="space-y-2">
+                {[
+                  { label: 'Analyse a Resume', link: '/resume-analyzer', icon: FileText },
+                  { label: 'Skill Gap Analysis', link: '/skill-gap-analysis', icon: BarChart2 },
+                  { label: 'My Roadmaps', link: '/my-roadmaps', icon: BookMarked },
+                  { label: 'Mock Interview', link: '/mock-interview', icon: BrainCircuit },
+                ].map(({ label, link, icon: Icon }) => (
+                  <Link key={label} to={link}
+                    className="flex items-center justify-between rounded-2xl border border-white/5 bg-white/5 px-4 py-3 text-sm text-slate-300 hover:bg-violet-400/10 hover:text-white hover:border-violet-400/20 transition">
+                    <div className="flex items-center gap-2">
+                      <Icon className="h-4 w-4 text-violet-400" /> {label}
+                    </div>
+                    <ArrowRight className="h-3.5 w-3.5 text-slate-500" />
+                  </Link>
                 ))}
               </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {activeTab === 'resume history' && (
+        <div className="space-y-4">
+          {loading ? (
+            <div className="space-y-3 animate-pulse">
+              {[1,2,3].map(i => <div key={i} className="h-24 rounded-[24px] bg-white/5 border border-white/10" />)}
+            </div>
+          ) : recentAnalyses.length === 0 ? (
+            <div className="rounded-[32px] border border-white/10 bg-white/5 p-16 text-center">
+              <FileText className="mx-auto h-10 w-10 text-violet-400/40 mb-3" />
+              <h3 className="text-lg font-semibold text-white mb-1">No resume analyses yet</h3>
+              <p className="text-slate-400 text-sm mb-5">Upload your first resume to see your analysis history here.</p>
+              <Link to="/resume-analyzer" className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-400 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white">
+                Analyse a Resume
+              </Link>
+            </div>
+          ) : (
+            recentAnalyses.map((a, idx) => {
+              const score = a.overall_score || 0;
+              const scoreColor = score >= 70 ? 'text-emerald-300' : score >= 50 ? 'text-amber-300' : 'text-rose-300';
+              const scoreBg = score >= 70 ? 'border-emerald-400/30 bg-emerald-400/10' : score >= 50 ? 'border-amber-400/30 bg-amber-400/10' : 'border-rose-400/30 bg-rose-400/10';
+              return (
+                <motion.div key={a.id}
+                  initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}
+                  className="rounded-[24px] border border-white/10 bg-[#090d20]/90 p-5 backdrop-blur-2xl">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-start gap-4">
+                      <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border text-xl font-bold ${scoreBg} ${scoreColor}`}>
+                        {score}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-white truncate">{a.file_name}</p>
+                        <div className="flex flex-wrap gap-2 mt-1.5">
+                          {a.experience_level && (
+                            <span className="rounded-full border border-violet-400/30 bg-violet-400/10 px-2 py-0.5 text-[10px] font-semibold text-violet-300">{a.experience_level}</span>
+                          )}
+                          {a.ats_compatibility != null && (
+                            <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-slate-400">ATS: {a.ats_compatibility}%</span>
+                          )}
+                          {a.keyword_match != null && (
+                            <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-slate-400">Keywords: {a.keyword_match}%</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-600 mt-1">{new Date(a.created_at).toLocaleString()}</p>
+                      </div>
+                    </div>
+                    <Link to="/resume-analyzer"
+                      className="flex items-center gap-1.5 rounded-full border border-violet-400/30 bg-violet-400/10 px-4 py-2 text-xs font-semibold text-violet-200 hover:bg-violet-400/20 transition shrink-0">
+                      Re-analyse <ArrowRight className="h-3 w-3" />
+                    </Link>
+                  </div>
+                  {a.executive_summary && (
+                    <p className="mt-3 text-xs text-slate-400 leading-relaxed border-t border-white/5 pt-3">{a.executive_summary}</p>
+                  )}
+                </motion.div>
+              );
+            })
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -1880,33 +2367,154 @@ function ContactPage() {
 }
 
 function AuthPage({ type }) {
+  const navigate = useNavigate();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const inputClass = "w-full rounded-2xl border border-white/10 bg-[#090d20] px-4 py-3 text-white placeholder-slate-500 outline-none focus:border-violet-500 transition text-sm";
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    if (type === 'signup') {
+      if (!email || !password || !confirmPassword) { setError('All fields are required.'); return; }
+      if (password !== confirmPassword) { setError('Passwords do not match.'); return; }
+      if (password.length < 6) { setError('Password must be at least 6 characters.'); return; }
+    } else {
+      if (!email || !password) { setError('Email and password are required.'); return; }
+    }
+
+    setLoading(true);
+    try {
+      if (type === 'signup') {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { full_name: name } },
+        });
+        if (error) throw error;
+        setSuccess('Account created! Check your email to confirm, then log in.');
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        navigate('/dashboard');
+      }
+    } catch (err) {
+      setError(err.message || 'Something went wrong. Try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="mx-auto flex min-h-[80vh] max-w-7xl items-center justify-center px-4 py-20 sm:px-6 lg:px-8">
-      <div className="grid w-full gap-8 rounded-[32px] border border-white/10 bg-white/10 p-8 shadow-soft backdrop-blur-2xl lg:grid-cols-2">
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+        className="grid w-full gap-8 rounded-[32px] border border-white/10 bg-white/10 p-8 shadow-soft backdrop-blur-2xl lg:grid-cols-2">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.3em] text-violet-300">{type === 'login' ? 'Login' : 'Sign up'}</p>
-          <h1 className="mt-3 font-['Poppins'] text-3xl font-semibold">{type === 'login' ? 'Welcome back to your AI career workspace' : 'Create your future-ready career profile'}</h1>
-          <div className="mt-8 space-y-4">
-            {type === 'signup' && <input className="w-full rounded-2xl border border-white/10 bg-[#090d20] px-4 py-3 text-white outline-none" placeholder="Name" />}
-            <input className="w-full rounded-2xl border border-white/10 bg-[#090d20] px-4 py-3 text-white outline-none" placeholder="Email" />
-            <input className="w-full rounded-2xl border border-white/10 bg-[#090d20] px-4 py-3 text-white outline-none" placeholder="Password" />
-            {type === 'signup' && <input className="w-full rounded-2xl border border-white/10 bg-[#090d20] px-4 py-3 text-white outline-none" placeholder="Confirm Password" />}
-            {type === 'signup' && <div className="grid gap-4 sm:grid-cols-2"><input className="w-full rounded-2xl border border-white/10 bg-[#090d20] px-4 py-3 text-white outline-none" placeholder="College" /><input className="w-full rounded-2xl border border-white/10 bg-[#090d20] px-4 py-3 text-white outline-none" placeholder="Degree" /></div>}
-            <button className="w-full rounded-full bg-gradient-to-r from-violet-400 to-violet-500 px-5 py-3 font-semibold text-white">{type === 'login' ? 'Login' : 'Create Account'}</button>
-          </div>
+          <h1 className="mt-3 font-['Poppins'] text-3xl font-semibold">
+            {type === 'login' ? 'Welcome back to your AI career workspace' : 'Create your future-ready career profile'}
+          </h1>
+
+          <form onSubmit={handleSubmit} className="mt-8 space-y-4">
+            {type === 'signup' && (
+              <input
+                type="text"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                className={inputClass}
+                placeholder="Full name"
+              />
+            )}
+
+            <input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              className={inputClass}
+              placeholder="Email address"
+              required
+            />
+
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                className={inputClass + ' pr-11'}
+                placeholder="Password (min 6 characters)"
+                required
+              />
+              <button type="button" onClick={() => setShowPassword(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition">
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+
+            {type === 'signup' && (
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
+                className={inputClass}
+                placeholder="Confirm password"
+              />
+            )}
+
+            {error && (
+              <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+                className="flex items-start gap-3 rounded-2xl border border-rose-400/30 bg-rose-400/10 px-4 py-3 text-sm text-rose-200">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-rose-400" />
+                <span>{error}</span>
+              </motion.div>
+            )}
+
+            {success && (
+              <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+                className="flex items-start gap-3 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200">
+                <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-emerald-400" />
+                <span>{success}</span>
+              </motion.div>
+            )}
+
+            <button type="submit" disabled={loading}
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-violet-400 to-violet-500 px-5 py-3 font-semibold text-white disabled:opacity-50 transition">
+              {loading
+                ? <><LoaderCircle className="h-4 w-4 animate-spin" /> {type === 'login' ? 'Signing in…' : 'Creating account…'}</>
+                : type === 'login' ? 'Login' : 'Create Account'}
+            </button>
+          </form>
+
+          <p className="mt-5 text-center text-sm text-slate-400">
+            {type === 'login'
+              ? <>Don't have an account? <Link to="/signup" className="text-violet-300 hover:text-violet-200 transition">Sign up</Link></>
+              : <>Already have an account? <Link to="/login" className="text-violet-300 hover:text-violet-200 transition">Login</Link></>}
+          </p>
         </div>
+
         <div className="rounded-[24px] border border-white/10 bg-[#090d20] p-6">
           <div className="rounded-[20px] border border-violet-400/20 bg-violet-400/10 p-6 text-center">
             <BrainCircuit className="mx-auto h-10 w-10 text-violet-300" />
             <h3 className="mt-4 text-xl font-semibold text-white">AI career acceleration</h3>
             <p className="mt-3 text-sm text-slate-400">Access resume insights, interview mastery, and career roadmaps from one beautiful workspace.</p>
-            <div className="mt-6 flex justify-center gap-3">
-              <button className="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm">Google</button>
-              <button className="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm">GitHub</button>
+            <div className="mt-6 space-y-3 text-sm text-slate-300">
+              {['Resume ATS analysis', 'Skill gap reports', 'Saved roadmaps', 'Progress tracking'].map(item => (
+                <div key={item} className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-left">
+                  <CheckCircle2 className="h-4 w-4 text-violet-300 shrink-0" /> {item}
+                </div>
+              ))}
             </div>
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

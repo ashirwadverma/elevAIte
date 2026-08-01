@@ -182,7 +182,13 @@ function MainLayout() {
     return () => subscription.unsubscribe();
   }, []);
 
-  const navItems = ['Resume Analyzer', 'Mock Interview', 'Skill Gap Analysis', 'Learning Roadmap', 'My Roadmaps', 'Dashboard'];
+  const navItems = [
+    'Resume Analyzer',
+    'Mock Interview',
+    'Skill Gap Analysis',
+    'Learning Roadmap',
+    ...(session ? ['My Roadmaps', 'Dashboard'] : []),
+  ];
 
   const bumpUsage = (key) => {
     // Update local state immediately for instant UI feedback
@@ -897,24 +903,6 @@ function ResumeAnalyzerPage({ onUsageUpdate }) {
           Get AI-powered feedback on ATS compatibility, missing keywords, skill gaps, and resume improvement suggestions in minutes.
         </p>
       </motion.div>
-
-      {/* ── Backend Status ──────────────────────────────────────────────────── */}
-      {edgeFunctionUrl ? (
-        <div className="mx-auto mt-8 max-w-3xl flex items-center gap-3 rounded-[20px] border border-emerald-400/20 bg-emerald-400/8 px-4 py-3">
-          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
-          <div className="flex-1 min-w-0">
-            <span className="text-xs font-semibold text-emerald-300">Connected to Supabase Edge Function</span>
-            <p className="text-[11px] text-slate-400 truncate mt-0.5">{edgeFunctionUrl}</p>
-          </div>
-        </div>
-      ) : (
-        <div className="mx-auto mt-8 max-w-3xl flex items-start gap-3 rounded-[20px] border border-amber-400/30 bg-amber-400/10 px-4 py-3">
-          <X className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" />
-          <p className="text-xs text-amber-200">
-            <code className="font-mono">VITE_SUPABASE_URL</code> is not set. Add it to your <code className="font-mono">.env</code> file and restart the dev server.
-          </p>
-        </div>
-      )}
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
         <motion.div

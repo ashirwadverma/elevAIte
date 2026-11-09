@@ -1,4 +1,9 @@
+// @ts-nocheck
+/* eslint-disable */
+// @ts-ignore
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
+declare const Deno: any;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

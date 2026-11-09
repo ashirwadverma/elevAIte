@@ -4,9 +4,8 @@
 
 :root {
   font-family: 'Inter', system-ui, sans-serif;
-  /* Primary dark-tinted background to match reference */
-  color: #eef4ff;
-  background: #0a0e1a;
+  color: #0f172a;
+  background: #ffffff;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -21,104 +20,228 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  /* deep space navy base with subtle purple + teal glows */
-  background-image:
-    radial-gradient(circle at 18% 22%, rgba(124,108,246,0.14), transparent 26%),
-    radial-gradient(circle at 82% 12%, rgba(139,92,246,0.10), transparent 20%),
-    linear-gradient(180deg, rgba(4,6,13,0.08), transparent 30%);
-  background-color: #0a0e1a;
-  background-size: cover;
-  color: #eef4ff;
+  background: #ffffff;
+  color: #0f172a;
 }
 
 * {
   box-sizing: border-box;
 }
 
-.light h1,
-.light h2,
-.light h3,
-.light p,
-.light li,
-.light label,
-.light span,
-.light strong,
-.light small {
-  color: inherit;
+/* ═══════════════════════════════════════════════════════════════════════════
+   SERKO THEME (Global Pastel Gradient & Frosted Glass Design System)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.serko-theme {
+  color: #0f172a;
 }
 
-.light .text-white {
+/* Headings */
+.serko-theme h1,
+.serko-theme h2,
+.serko-theme h3,
+.serko-theme h4,
+.serko-theme h5,
+.serko-theme h6 {
+  color: #0f172a !important;
+  font-weight: 700 !important;
+}
+
+/* Preserve text gradients on branded titles */
+.serko-theme .bg-clip-text {
+  color: transparent !important;
+}
+
+/* High-contrast text overrides for light background - no fogging */
+.serko-theme .text-white {
   color: #0f172a !important;
 }
 
-.light .text-slate-300 {
+.serko-theme .text-slate-200,
+.serko-theme .text-slate-300 {
+  color: #1e293b !important;
+  font-weight: 500 !important;
+}
+
+.serko-theme .text-slate-400 {
+  color: #1e293b !important;
+  font-weight: 600 !important;
+}
+
+.serko-theme .text-slate-500 {
   color: #334155 !important;
+  font-weight: 600 !important;
 }
 
-.light .text-slate-400 {
-  color: #475569 !important;
-}
-
-.light .text-slate-500 {
-  color: #64748b !important;
-}
-
-.light .text-slate-200 {
-  color: #334155 !important;
-}
-
-.light .bg-white\/10 {
-  background-color: rgba(255, 255, 255, 0.92) !important;
-}
-
-.light .bg-white\/5 {
-  background-color: rgba(255, 255, 255, 0.96) !important;
-}
-
-.light .border-white\/10 {
-  border-color: rgba(15, 23, 42, 0.14) !important;
-}
-
-.light .border-white\/5 {
-  border-color: rgba(15, 23, 42, 0.12) !important;
-}
-
-.light input,
-.light textarea {
+.serko-theme .text-slate-600 {
   color: #0f172a !important;
-  background-color: rgba(255, 255, 255, 0.96) !important;
+  font-weight: 600 !important;
 }
 
-.light input::placeholder,
-.light textarea::placeholder {
-  color: #64748b !important;
+/* Uppercase eyebrows, chips, badges */
+.serko-theme [class*="uppercase"] {
+  font-weight: 700 !important;
 }
 
+/* Deep, rich, high-contrast colored accents (no faint pastels) */
+.serko-theme .text-violet-200,
+.serko-theme .text-violet-300,
+.serko-theme .text-violet-400 {
+  color: #4338ca !important; /* Indigo-700 */
+  font-weight: 700 !important;
+}
+
+.serko-theme .text-cyan-200,
+.serko-theme .text-cyan-300,
+.serko-theme .text-cyan-400 {
+  color: #0369a1 !important; /* Sky-700 */
+  font-weight: 700 !important;
+}
+
+.serko-theme .text-emerald-200,
+.serko-theme .text-emerald-300,
+.serko-theme .text-emerald-400 {
+  color: #047857 !important; /* Emerald-700 */
+  font-weight: 700 !important;
+}
+
+.serko-theme .text-fuchsia-200,
+.serko-theme .text-fuchsia-300,
+.serko-theme .text-fuchsia-400 {
+  color: #7e22ce !important; /* Purple-700 */
+  font-weight: 700 !important;
+}
+
+.serko-theme .text-rose-200,
+.serko-theme .text-rose-300,
+.serko-theme .text-rose-400 {
+  color: #be123c !important; /* Rose-700 */
+  font-weight: 700 !important;
+}
+
+.serko-theme .text-amber-200,
+.serko-theme .text-amber-300,
+.serko-theme .text-amber-400 {
+  color: #b45309 !important; /* Amber-700 */
+  font-weight: 700 !important;
+}
+
+.serko-theme .text-blue-200,
+.serko-theme .text-blue-300,
+.serko-theme .text-blue-400 {
+  color: #1d4ed8 !important; /* Blue-700 */
+  font-weight: 700 !important;
+}
+
+/* Cards & Containers: Frosted Glass */
+.serko-theme .bg-white\/10 {
+  background-color: rgba(255, 255, 255, 0.68) !important;
+  border-color: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 10px 30px -5px rgba(99, 102, 241, 0.08) !important;
+}
+
+.serko-theme .bg-white\/5 {
+  background-color: rgba(255, 255, 255, 0.78) !important;
+  border-color: rgba(226, 232, 240, 0.85) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.serko-theme .border-white\/10 {
+  border-color: rgba(255, 255, 255, 0.75) !important;
+}
+
+.serko-theme .border-white\/5 {
+  border-color: rgba(226, 232, 240, 0.7) !important;
+}
+
+/* Hardcoded dark cards turned into luminous frosted glass */
+.serko-theme .bg-\[\#0a0e1a\],
+.serko-theme .bg-\[\#0a0e1a\]\/80,
+.serko-theme .bg-\[\#0a0e1a\]\/90,
+.serko-theme .bg-\[\#0a0e1a\]\/95,
+.serko-theme .bg-\[\#090d20\],
+.serko-theme .bg-\[\#090d20\]\/80,
+.serko-theme .bg-\[\#090d20\]\/90,
+.serko-theme .bg-\[\#090d20\]\/95,
+.serko-theme .bg-\[\#09111e\],
+.serko-theme .bg-\[\#09111e\]\/80,
+.serko-theme .bg-\[\#09111e\]\/90,
+.serko-theme .bg-\[\#09111e\]\/95,
+.serko-theme .bg-\[\#050814\] {
+  background-color: rgba(255, 255, 255, 0.75) !important;
+  border-color: rgba(226, 232, 240, 0.85) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 10px 25px -4px rgba(99, 102, 241, 0.08) !important;
+}
+
+/* Dropzone & Interactive areas */
+.serko-theme .bg-violet-400\/10 {
+  background-color: rgba(238, 242, 255, 0.75) !important;
+}
+
+.serko-theme .border-violet-400\/30 {
+  border-color: rgba(165, 180, 252, 0.75) !important;
+}
+
+.serko-theme .border-dashed {
+  border-color: rgba(129, 140, 248, 0.5) !important;
+}
+
+/* Form inputs & textareas */
+.serko-theme input,
+.serko-theme textarea,
+.serko-theme select {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  color: #0f172a !important;
+  border-color: rgba(203, 213, 225, 0.85) !important;
+}
+
+.serko-theme input::placeholder,
+.serko-theme textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Deep glow shadows turned into subtle glass elevation */
+.serko-theme [class*="shadow-\[0_0_80px"],
+.serko-theme [class*="shadow-\[0_0_50px"],
+.serko-theme [class*="shadow-\[0_0_40px"] {
+  box-shadow: 0 12px 36px -4px rgba(99, 102, 241, 0.1) !important;
+}
+
+/* Dark & colored primary action buttons maintain WHITE text */
+.serko-theme button.bg-slate-900,
+.serko-theme button.bg-slate-900 *,
+.serko-theme .bg-slate-900,
+.serko-theme .bg-slate-900 *,
+.serko-theme .bg-black,
+.serko-theme .bg-black *,
+.serko-theme [class*="bg-purple-600"],
+.serko-theme [class*="bg-purple-600"] *,
+.serko-theme [class*="bg-purple-700"],
+.serko-theme [class*="bg-purple-700"] *,
+.serko-theme [class*="bg-blue-600"],
+.serko-theme [class*="bg-blue-600"] *,
+.serko-theme [class*="bg-blue-700"],
+.serko-theme [class*="bg-blue-700"] *,
+.serko-theme [class*="bg-\[#2563eb\]"],
+.serko-theme [class*="bg-\[#2563eb\]"] *,
+.serko-theme [class*="bg-indigo-600"] *,
+.serko-theme button[class*="bg-gradient"],
+.serko-theme button[class*="bg-gradient"] *,
+.serko-theme a[class*="bg-gradient"],
+.serko-theme a[class*="bg-gradient"] *,
+.serko-theme [class*="rounded-full"][class*="bg-slate-900"] *,
+.serko-theme .badge-dark,
+.serko-theme .badge-dark * {
+  color: #ffffff !important;
+}
+
+/* Selection highlight */
 ::selection {
   background: rgba(124, 108, 246, 0.28);
   color: #071025;
 }
-
-/* Palette overrides: map common Tailwind cyan/violet utilities to the new teal→purple palette */
-/* Targets include utility class names and partial matches to avoid changing markup. */
-
-[class*="text-violet-300"] { color: #8b5cf6 !important; }
-[class*="text-violet-200"] { color: rgba(139,92,246,0.9) !important; }
-
-[class*="from-violet-400"] { --tw-gradient-from: #8b5cf6 !important; }
-[class*="via-violet-400"], [class*="via-violet-600"] { --tw-gradient-via: #7c6cf6 !important; }
-[class*="to-violet-500"] { --tw-gradient-to: #7c6cf6 !important; }
-
-[class*="border-violet-400"] { border-color: rgba(124,108,246,0.28) !important; }
-[class*="bg-violet-400"] { background-color: rgba(139,92,246,0.08) !important; }
-[class*="bg-violet-500"] { background-color: rgba(124,108,246,0.08) !important; }
-
-/* Gradient helpers: ensure gradients use our new variables when applied */
-[class*="bg-gradient-to-r"], [class*="bg-gradient-to-br"] {
-  /* ensure gradient stops inherit from the variables above */
-}
-
-/* Hover/active color replacements */
-[class*="hover:text-violet-300"] { color: #8b5cf6 !important; }
-[class*="hover:text-violet-500"] { color: #8b5cf6 !important; }
-

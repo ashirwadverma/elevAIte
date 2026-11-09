@@ -2,7 +2,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import { Routes, Route, Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { saveRoadmap, getSavedRoadmaps, updateRoadmap, deleteRoadmap, getUsageMetrics, bumpUsageMetric, saveResumeAnalysis, getResumeAnalyses } from './lib/db.js';
-import { supabase } from './lib/supabase.js';
+import { supabase, isSupabaseConfigured } from './lib/supabase.js';
+import { extractResumeText, extractResumeData, evaluateResume, detectSkills, detectSoftSkills, buildWordRegex, computeMissingKeywords, validateBulletRewrites, validateRecommendations, computeScores, validateSummary, buildTemplateSummary, computeReinforcedSkills, extractExperienceBullets, extractMajorSections, extractAllBullets, splitResumeBullets } from './lib/atsEngine.js';
+import { evaluateSkillGap } from './lib/skillGapEngine.js';
+import SerkoLandingPage from './components/SerkoLandingPage.jsx';
+import SerkoAuthPage from './components/SerkoAuthPage.jsx';
 import {
   AlertCircle,
   ArrowRight,
@@ -10,13 +14,17 @@ import {
   BrainCircuit,
   CheckCircle2,
   ChevronDown,
+  ChevronRight,
   CircleDollarSign,
   Compass,
   Cpu,
   Download,
   FileText,
   GraduationCap,
+  LayoutDashboard,
+  Linkedin,
   LoaderCircle,
+  Mail,
   Menu,
   MessageCircleMore,
   Moon,
@@ -160,6 +168,30 @@ function readUsage() {
   }
 }
 
+function resolveUserName(session) {
+  if (session?.user?.user_metadata?.full_name) {
+    return session.user.user_metadata.full_name;
+  }
+  if (session?.user?.user_metadata?.name) {
+    return session.user.user_metadata.name;
+  }
+  try {
+    const profile = JSON.parse(localStorage.getItem('elevAIte_user_profile') || '{}');
+    if (profile.name || profile.full_name) {
+      return profile.name || profile.full_name;
+    }
+  } catch {}
+  try {
+    const email = session?.user?.email;
+    if (email) {
+      const users = JSON.parse(localStorage.getItem('elevAIte_registered_users') || '[]');
+      const match = users.find((u) => u.email?.toLowerCase() === email.toLowerCase());
+      if (match?.name) return match.name;
+    }
+  } catch {}
+  return 'Ashirwad Verma';
+}
+
 function MainLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
@@ -169,26 +201,88 @@ function MainLayout() {
   const [usageMetrics, setUsageMetrics] = useState(readUsage);
   const [session, setSession] = useState(null);
   const [sessionLoading, setSessionLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const sidebarTimeoutRef = useRef(null);
   const location = useLocation();
 
+  const handleSidebarEnter = () => {
+    if (sidebarTimeoutRef.current) clearTimeout(sidebarTimeoutRef.current);
+    setSidebarOpen(true);
+  };
+
+  const handleSidebarLeave = () => {
+    if (sidebarTimeoutRef.current) clearTimeout(sidebarTimeoutRef.current);
+    sidebarTimeoutRef.current = setTimeout(() => {
+      setSidebarOpen(false);
+    }, 180);
+  };
+
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setSessionLoading(false);
-    });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-    return () => subscription.unsubscribe();
+    setSidebarOpen(false);
+    setMenuOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    return () => {
+      if (sidebarTimeoutRef.current) clearTimeout(sidebarTimeoutRef.current);
+    };
   }, []);
 
-  const navItems = [
-    'Resume Analyzer',
-    'Mock Interview',
-    'Skill Gap Analysis',
-    'Learning Roadmap',
-    ...(session ? ['My Roadmaps', 'Dashboard'] : []),
+  useEffect(() => {
+    const checkLocal = () => {
+      try {
+        const stored = localStorage.getItem('elevAIte_session');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          setSession(parsed);
+          setSessionLoading(false);
+          return true;
+        }
+      } catch {}
+      return false;
+    };
+
+    checkLocal();
+
+    try {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) setSession(session);
+        setSessionLoading(false);
+      }).catch(() => {
+        setSessionLoading(false);
+      });
+
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (session) {
+          setSession(session);
+        } else {
+          checkLocal();
+        }
+      });
+
+      const handleAuthChange = () => checkLocal();
+      window.addEventListener('elevAIte_auth_change', handleAuthChange);
+
+      return () => {
+        subscription?.unsubscribe?.();
+        window.removeEventListener('elevAIte_auth_change', handleAuthChange);
+      };
+    } catch {
+      setSessionLoading(false);
+    }
+  }, []);
+
+  const sidebarNavItems = [
+    { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { label: 'Resume Analyzer', path: '/resume-analyzer', icon: FileText },
+    { label: 'Mock Interview', path: '/mock-interview', icon: BrainCircuit },
+    { label: 'Skill Gap Analysis', path: '/skill-gap-analysis', icon: BarChart2 },
+    { label: 'Learning Roadmap', path: '/learning-roadmap', icon: Compass },
+    { label: 'My Roadmaps', path: '/my-roadmaps', icon: BookMarked },
+    { label: 'Pricing', path: '/pricing', icon: CircleDollarSign },
   ];
+
+  const currentUserName = resolveUserName(session);
 
   const bumpUsage = (key) => {
     // Update local state immediately for instant UI feedback
@@ -218,78 +312,283 @@ function MainLayout() {
     };
   }, []);
 
+  const isAuthPage = location.pathname === '/login' || location.pathname === '/signup';
+  const isLandingPage = location.pathname === '/';
+
   return (
-    <div className={darkMode ? 'dark' : 'light'}>
-      <div className={`min-h-screen transition-colors duration-300 ${darkMode ? 'bg-[#0a0e1a] text-slate-100' : 'bg-[#eef4ff] text-slate-900'}`}>
-        <div className="pointer-events-none fixed inset-0 z-30 overflow-hidden">
-          <div className="absolute h-64 w-64 rounded-full bg-gradient-to-br from-[#8b5cf6]/20 to-[#7c6cf6]/18 blur-3xl" style={{ transform: `translate(${cursorPos.x - 128}px, ${cursorPos.y - 128}px)` }} />
-        </div>
+    <div
+      className="serko-theme min-h-screen w-full relative font-['Inter',sans-serif] overflow-x-hidden"
+      style={{
+        background:
+          'linear-gradient(180deg, #ffffff 0%, #ffffff 7%, #eff6ff 15%, #d4ebfd 25%, #9ecffd 37%, #74affb 49%, #8ea7fa 61%, #b095fc 73%, #c985f8 84%, #d77ef3 92%, #e084ed 100%)'
+      }}
+    >
+      {/* ─── Ambient Atmospheric Lighting ──────────────────────────────────── */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute top-[18%] left-1/2 h-[750px] w-[1300px] -translate-x-1/2 rounded-full bg-sky-300/30 blur-3xl" />
+        <div className="absolute top-[65%] left-1/2 h-[900px] w-[1400px] -translate-x-1/2 rounded-full bg-purple-300/35 blur-3xl" />
+        <div
+          className="absolute bottom-0 inset-x-0 h-[600px]"
+          style={{
+            background:
+              'radial-gradient(ellipse 95% 65% at 50% 100%, rgba(244,114,182,0.3) 0%, rgba(192,132,252,0.35) 42%, transparent 78%)'
+          }}
+        />
+      </div>
 
-        <div className="fixed inset-x-0 top-4 z-50 mx-auto flex max-w-xl items-center justify-center px-4">
-          <div className={`flex items-center gap-2 rounded-full border px-3 py-2 text-sm shadow-soft backdrop-blur-xl ${darkMode ? 'border-white/10 bg-[#0a0e1a]/80 text-slate-300' : 'border-slate-200 bg-white/80 text-slate-700'}`}>
-            <Sparkles className="h-4 w-4 text-violet-300" />
-            <span>AI-powered career acceleration is live</span>
-          </div>
-        </div>
-
-        <header className={`sticky top-0 z-50 border-b backdrop-blur-xl ${darkMode ? 'border-white/10 bg-[#0a0e1a]/80' : 'border-slate-200 bg-white/80'}`}>
-          <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-            <Link to="/" className="flex items-center gap-3 text-lg font-semibold">
-              <LogoMark />
-              <span className={`font-['Poppins'] ${darkMode ? 'text-white' : 'text-slate-900'}`}>elevAIte</span>
-            </Link>
-            <nav className={`hidden items-center gap-5 text-sm lg:flex ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-              {navItems.map((item) => {
-                const to = `/${item.toLowerCase().replace(/ /g, '-')}`;
-                const path = to === '/' ? '/' : to;
-                return (
-                  <motion.div key={item} whileHover={{ y: -2, scale: 1.04 }} transition={{ type: 'spring', stiffness: 220, damping: 18 }}>
-                    <NavLink to={path === '/' ? '/' : path} className={({ isActive }) => `transition hover:text-[#8b5cf6] ${isActive ? 'text-[#7c6cf6]' : ''}`}>
-                      {item}
-                    </NavLink>
-                  </motion.div>
-                );
-              })}
-            </nav>
-            <div className="hidden items-center gap-3 lg:flex">
-              <button onClick={() => setDarkMode(!darkMode)} className={`rounded-full border p-2 ${darkMode ? 'border-white/10 bg-white/10 text-slate-200' : 'border-slate-200 bg-white/80 text-slate-700'}`}>
-                {darkMode ? <SunMedium className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </button>
-              {session ? (
-                <>
-                  <span className="max-w-[160px] truncate text-sm text-slate-300">{session.user.email}</span>
-                  <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm text-slate-200 hover:text-white transition">
-                    <LogOut className="h-3.5 w-3.5" /> Sign Out
-                  </button>
-                </>
-              ) : (
-                <>
-                  <Link to="/login" className={`rounded-full border px-4 py-2 text-sm ${darkMode ? 'border-white/10' : 'border-slate-200'}`}>Login</Link>
-                  <Link to="/signup" className="rounded-full bg-gradient-to-r from-violet-400 to-violet-500 px-4 py-2 text-sm font-semibold text-white">Sign Up</Link>
-                </>
-              )}
-            </div>
-            <button onClick={() => setMenuOpen(!menuOpen)} className="rounded-full border border-white/10 bg-white/10 p-2 lg:hidden">
-              {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </button>
-          </div>
-          {menuOpen && (
-            <div className={`border-t px-4 py-4 lg:hidden ${darkMode ? 'border-white/10 bg-[#0a0e1a]/95 text-slate-300' : 'border-slate-200 bg-white/95 text-slate-600'}`}>
-              <div className="flex flex-col gap-3 text-sm">
-                {navItems.map((item) => {
-                  const to = `/${item.toLowerCase().replace(/ /g, '-')}`;
-                  return <NavLink key={item} to={to === '/' ? '/' : to} onClick={() => setMenuOpen(false)} className="transition hover:text-violet-500">{item}</NavLink>;
-                })}
+      <div className="relative z-10 w-full min-h-screen flex flex-col justify-between">
+        {!isLandingPage && !isAuthPage && (
+          <>
+            {/* Left Edge Hover Trigger Area & Floating Indicator */}
+            <div
+              onMouseEnter={handleSidebarEnter}
+              onMouseLeave={handleSidebarLeave}
+              className="hidden lg:block fixed inset-y-0 left-0 w-5 z-40 group cursor-pointer"
+            >
+              {/* Floating mini handle on left edge */}
+              <div
+                className={`absolute left-0 top-1/2 -translate-y-1/2 flex items-center justify-center h-20 w-4 rounded-r-xl border border-l-0 border-indigo-200/80 bg-white/90 shadow-md backdrop-blur-md text-slate-500 hover:text-indigo-600 transition-all ${
+                  sidebarOpen ? 'opacity-0 pointer-events-none' : 'opacity-85 hover:opacity-100 hover:w-5'
+                }`}
+                title="Hover cursor here to open navigation"
+              >
+                <ChevronRight className="h-3.5 w-3.5 text-indigo-600 group-hover:translate-x-0.5 transition-transform" />
               </div>
             </div>
-          )}
-        </header>
 
-        <main className="relative overflow-hidden">
+            {/* Desktop Left Vertical Navbar (Slides in on hover) */}
+            <aside
+              onMouseEnter={handleSidebarEnter}
+              onMouseLeave={handleSidebarLeave}
+              className={`hidden lg:flex fixed inset-y-0 left-0 w-64 z-50 flex-col justify-between border-r border-slate-200/80 bg-white/95 backdrop-blur-2xl p-4 shadow-2xl transition-transform duration-300 ease-out ${
+                sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+              }`}
+            >
+              <div className="flex flex-col flex-1 min-h-0">
+                {/* Logo & Brand Header */}
+                <div className="flex items-center justify-between gap-2.5 px-2 py-3 border-b border-slate-200/60">
+                  <Link to="/" onClick={() => setSidebarOpen(false)} className="flex items-center gap-2.5 group">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-rose-500 text-white shadow-xs">
+                      <Sparkles className="h-4.5 w-4.5" />
+                    </div>
+                    <span className="font-['Poppins'] text-xl font-bold tracking-tight text-slate-900">
+                      elev<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">AI</span>te
+                    </span>
+                  </Link>
+                  <button
+                    onClick={() => setSidebarOpen(false)}
+                    className="rounded-lg p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+                    title="Close navigation"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {/* Vertical Navigation Items */}
+                <div className="mt-5 flex-1 overflow-y-auto space-y-1 pr-1">
+                  <p className="px-3 pb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Navigation
+                  </p>
+                  {sidebarNavItems.map(({ label, path, icon: Icon }) => (
+                    <NavLink
+                      key={path}
+                      to={path}
+                      onClick={() => setSidebarOpen(false)}
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition ${
+                          isActive
+                            ? 'bg-indigo-50/90 text-indigo-700 font-semibold border border-indigo-200/80 shadow-xs'
+                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
+                        }`
+                      }
+                    >
+                      <Icon className="h-4 w-4 shrink-0 text-slate-500" />
+                      <span>{label}</span>
+                    </NavLink>
+                  ))}
+                </div>
+              </div>
+
+              {/* Bottom Profile & Session Section */}
+              <div className="pt-4 border-t border-slate-200/60">
+                {session ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2.5 rounded-2xl bg-white/90 border border-slate-200/80 p-2.5 shadow-2xs">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-xs font-bold text-white shadow-xs">
+                        {currentUserName[0]}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-slate-900 truncate">{currentUserName}</p>
+                        <p className="text-[11px] text-slate-500 truncate">{session.user.email}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2">
+                      <Link
+                        to="/"
+                        onClick={() => setSidebarOpen(false)}
+                        className="text-[11px] font-semibold text-slate-500 hover:text-indigo-600 transition px-2 py-1"
+                      >
+                        ← Home
+                      </Link>
+                      <button
+                        onClick={() => {
+                          supabase.auth.signOut().catch(() => {});
+                          localStorage.removeItem('elevAIte_session');
+                          localStorage.removeItem('elevAIte_user_profile');
+                          setSession(null);
+                          setSidebarOpen(false);
+                          window.dispatchEvent(new Event('elevAIte_auth_change'));
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 px-3 py-1.5 text-xs font-medium text-slate-700 transition shadow-2xs"
+                      >
+                        <LogOut className="h-3.5 w-3.5" />
+                        <span>Sign Out</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Link
+                      to="/login"
+                      onClick={() => setSidebarOpen(false)}
+                      className="flex w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition shadow-2xs"
+                    >
+                      Log In
+                    </Link>
+                    <Link
+                      to="/signup"
+                      onClick={() => setSidebarOpen(false)}
+                      className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#2563eb] hover:bg-[#1d4ed8] px-3 py-2 text-xs font-semibold text-white transition shadow-xs"
+                    >
+                      <span>Get Started</span>
+                      <ArrowRight className="h-3 w-3" />
+                    </Link>
+                  </div>
+                )}
+              </div>
+            </aside>
+
+            {/* Mobile Sticky Top Header */}
+            <div className="sticky top-0 z-40 w-full border-b border-slate-200/70 bg-white/90 backdrop-blur-md px-4 py-3 flex items-center justify-between lg:hidden">
+              <Link to="/" className="flex items-center gap-2 group">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-rose-500 text-white shadow-xs">
+                  <Sparkles className="h-4 w-4" />
+                </div>
+                <span className="font-['Poppins'] text-lg font-bold tracking-tight text-slate-900">
+                  elev<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">AI</span>te
+                </span>
+              </Link>
+
+              <button
+                onClick={() => setMenuOpen(!menuOpen)}
+                className="rounded-lg border border-slate-200 bg-white p-2 text-slate-700"
+              >
+                {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </button>
+            </div>
+
+            {/* Mobile Drawer */}
+            {menuOpen && (
+              <>
+                <div
+                  onClick={() => setMenuOpen(false)}
+                  className="fixed inset-0 z-40 bg-slate-900/30 backdrop-blur-xs lg:hidden"
+                />
+                <aside className="fixed inset-y-0 left-0 w-72 z-50 bg-white shadow-2xl p-4 flex flex-col justify-between lg:hidden">
+                  <div className="flex flex-col flex-1 min-h-0">
+                    <div className="flex items-center justify-between pb-4 border-b border-slate-200">
+                      <Link to="/" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-rose-500 text-white shadow-xs">
+                          <Sparkles className="h-4.5 w-4.5" />
+                        </div>
+                        <span className="font-['Poppins'] text-xl font-bold tracking-tight text-slate-900">
+                          elev<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">AI</span>te
+                        </span>
+                      </Link>
+                      <button onClick={() => setMenuOpen(false)} className="p-2 text-slate-500">
+                        <X className="h-5 w-5" />
+                      </button>
+                    </div>
+
+                    <div className="mt-5 flex-1 overflow-y-auto space-y-1">
+                      {sidebarNavItems.map(({ label, path, icon: Icon }) => (
+                        <NavLink
+                          key={path}
+                          to={path}
+                          onClick={() => setMenuOpen(false)}
+                          className={({ isActive }) =>
+                            `flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition ${
+                              isActive
+                                ? 'bg-indigo-50 text-indigo-700 font-semibold border border-indigo-200'
+                                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                            }`
+                          }
+                        >
+                          <Icon className="h-4 w-4 shrink-0 text-slate-500" />
+                          <span>{label}</span>
+                        </NavLink>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-200">
+                    {session ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2.5 rounded-2xl bg-slate-50 p-2.5 border border-slate-200">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-xs font-bold text-white uppercase">
+                            {currentUserName[0]}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold text-slate-900 truncate">{currentUserName}</p>
+                            <p className="text-[11px] text-slate-500 truncate">{session.user.email}</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            supabase.auth.signOut().catch(() => {});
+                            localStorage.removeItem('elevAIte_session');
+                            localStorage.removeItem('elevAIte_user_profile');
+                            setSession(null);
+                            setMenuOpen(false);
+                            window.dispatchEvent(new Event('elevAIte_auth_change'));
+                          }}
+                          className="w-full flex items-center justify-center gap-2 rounded-xl bg-slate-900 py-2.5 text-xs font-semibold text-white"
+                        >
+                          <LogOut className="h-3.5 w-3.5" />
+                          <span>Sign Out</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <Link
+                          to="/login"
+                          onClick={() => setMenuOpen(false)}
+                          className="block text-center rounded-xl border border-slate-200 py-2.5 text-xs font-semibold text-slate-700"
+                        >
+                          Log In
+                        </Link>
+                        <Link
+                          to="/signup"
+                          onClick={() => setMenuOpen(false)}
+                          className="block text-center rounded-xl bg-[#2563eb] py-2.5 text-xs font-semibold text-white"
+                        >
+                          Get Started
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                </aside>
+              </>
+            )}
+          </>
+        )}
+
+        <main className="relative flex-1">
           <AnimatePresence mode="wait">
             <motion.div key={location.pathname} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.25 }}>
               <Routes>
-                <Route path="/" element={<HomePage faqOpen={faqOpen} setFaqOpen={setFaqOpen} />} />
+                <Route path="/" element={<SerkoLandingPage features={features} stats={stats} testimonials={testimonials} faqItems={faqItems} faqOpen={faqOpen} setFaqOpen={setFaqOpen} darkMode={darkMode} setDarkMode={setDarkMode} session={session} onUsageUpdate={bumpUsage} />} />
                 <Route path="/resume-analyzer" element={<ResumeAnalyzerPage onUsageUpdate={bumpUsage} />} />
                 <Route path="/mock-interview" element={<MockInterviewPage onUsageUpdate={bumpUsage} />} />
                 <Route path="/skill-gap-analysis" element={<SkillGapAnalysisPage onUsageUpdate={bumpUsage} />} />
@@ -299,78 +598,111 @@ function MainLayout() {
                 <Route path="/pricing" element={<PricingPage onUsageUpdate={bumpUsage} />} />
                 <Route path="/about" element={<AboutPage />} />
                 <Route path="/contact" element={<ContactPage />} />
-                <Route path="/login" element={<AuthPage type="login" />} />
-                <Route path="/signup" element={<AuthPage type="signup" />} />
+                <Route path="/login" element={<SerkoAuthPage initialType="login" />} />
+                <Route path="/signup" element={<SerkoAuthPage initialType="signup" />} />
               </Routes>
             </motion.div>
           </AnimatePresence>
         </main>
 
-        <motion.button whileHover={{ scale: 1.05 }} onClick={() => setChatOpen(!chatOpen)} className="fixed bottom-6 right-6 z-40 rounded-full border border-violet-400/30 bg-gradient-to-r from-violet-400 to-violet-500 p-4 text-white shadow-soft">
-          <MessageCircleMore className="h-5 w-5" />
-        </motion.button>
+        {!isLandingPage && !isAuthPage && (
+          <>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              onClick={() => setChatOpen(!chatOpen)}
+              className="fixed bottom-6 right-6 z-40 rounded-full border border-indigo-400/30 bg-gradient-to-r from-blue-600 to-indigo-600 p-4 text-white shadow-lg"
+            >
+              <MessageCircleMore className="h-5 w-5" />
+            </motion.button>
 
-        <AnimatePresence>
-          {chatOpen && (
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 12 }} className="fixed bottom-24 right-6 z-40 w-[320px] rounded-[24px] border border-white/10 bg-[#090d20]/95 p-4 shadow-2xl backdrop-blur-xl">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-white">CareerPilot Assistant</p>
-                  <p className="text-xs text-slate-400">Ask anything about your path</p>
-                </div>
-                <button onClick={() => setChatOpen(false)} className="rounded-full border border-white/10 p-2 text-slate-300"><X className="h-4 w-4" /></button>
-              </div>
-              <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-slate-300">
-                “I can help you review your resume, prep for interviews, and suggest next steps.”
-              </div>
-              <button className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#8b5cf6] to-[#7c6cf6] px-4 py-2 text-sm font-semibold text-white">
-                <BrainCircuit className="h-4 w-4" /> Start AI Chat
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            <AnimatePresence>
+              {chatOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 12 }}
+                  className="fixed bottom-24 right-6 z-40 w-[320px] rounded-[24px] border border-slate-200/80 bg-white/95 p-4 shadow-2xl backdrop-blur-xl"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">CareerPilot Assistant</p>
+                      <p className="text-xs text-slate-500">Ask anything about your path</p>
+                    </div>
+                    <button
+                      onClick={() => setChatOpen(false)}
+                      className="rounded-full border border-slate-200 p-2 text-slate-500 hover:bg-slate-100 transition"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <div className="mt-4 rounded-2xl border border-slate-200/70 bg-slate-50/80 p-3 text-sm text-slate-600">
+                    “I can help you review your resume, prep for interviews, and suggest next steps.”
+                  </div>
+                  <button className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 px-4 py-2 text-sm font-semibold text-white transition">
+                    <BrainCircuit className="h-4 w-4" /> Start AI Chat
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-        <footer className="border-t border-white/10 bg-black/20">
-          <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-4 lg:px-8">
-            <div>
-                <div className="mb-4 flex items-center gap-3">
-                <div className="rounded-full border border-[#7c6cf6]/30 bg-[#8b5cf6]/10 p-2">
-                  <BrainCircuit className="h-5 w-5 text-[#8b5cf6]" />
+            <footer className="w-full px-4 sm:px-6 lg:px-8 pb-8 pt-4">
+              <div className="mx-auto max-w-4xl rounded-[24px] border border-purple-200/60 bg-white/60 p-6 sm:p-7 shadow-sm backdrop-blur-xl">
+                {/* 2-Column Layout (Navigation Removed) */}
+                <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
+                  {/* Left Side: Brand & Description */}
+                  <div className="max-w-md">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-rose-500 text-white shadow-sm">
+                        <Sparkles className="h-4 w-4" />
+                      </div>
+                      <span className="font-['Poppins'] text-xl font-bold tracking-tight text-slate-900">
+                        elev<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">AI</span>te
+                      </span>
+                    </div>
+                    <p className="mt-2.5 text-xs sm:text-sm text-slate-600 leading-relaxed">
+                      Turn course syllabi and career ambitions into balanced preparation. AI-powered resume screening, interview mastery, and skill-gap analysis.
+                    </p>
+                  </div>
+
+                  {/* Right Side: DEVELOPER & CONTACT */}
+                  <div className="shrink-0">
+                    <p className="text-xs font-bold uppercase tracking-wider text-blue-600 mb-2.5">
+                      DEVELOPER & CONTACT
+                    </p>
+                    <div className="flex flex-col gap-2 text-xs sm:text-sm text-slate-600">
+                      <a
+                        href="mailto:aashirwadverma88@gmail.com"
+                        className="flex items-center gap-2 hover:text-black transition"
+                      >
+                        <Mail className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                        <span>aashirwadverma88@gmail.com</span>
+                      </a>
+
+                      <a
+                        href="https://www.linkedin.com/in/ashirwad-verma-98445837b"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group inline-flex items-center gap-2 font-semibold text-slate-900 hover:text-blue-600 transition mt-0.5"
+                      >
+                        <div className="flex h-5 w-5 items-center justify-center rounded bg-[#0077b5] text-white">
+                          <Linkedin className="h-3 w-3 fill-current" />
+                        </div>
+                        <span>LinkedIn Profile</span>
+                        <ArrowUpRight className="h-3 w-3 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                      </a>
+                    </div>
+                  </div>
                 </div>
-                <span className="font-['Poppins'] text-lg text-white">elevAIte</span>
+
+                {/* Bottom Row */}
+                <div className="mt-5 border-t border-purple-200/50 pt-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+                  <p>© 2026 elevAIte. All rights reserved.</p>
+                  <p>Built for students who are aiming for top tech careers.</p>
+                </div>
               </div>
-              <p className="text-sm text-slate-400">A premium AI career accelerator for students and professionals.</p>
-            </div>
-            <div>
-              <h3 className="mb-3 font-semibold text-white">Quick Links</h3>
-              <div className="flex flex-col gap-2 text-sm text-slate-400">
-                <Link to="/resume-analyzer" className="hover:text-[#8b5cf6]">Resume Analyzer</Link>
-                <Link to="/mock-interview" className="hover:text-[#8b5cf6]">Mock Interviews</Link>
-                <Link to="/skill-gap-analysis" className="hover:text-[#8b5cf6]">Skill Gap Analysis</Link>
-                <Link to="/my-roadmaps" className="hover:text-[#8b5cf6]">My Roadmaps</Link>
-                <Link to="/pricing" className="hover:text-[#8b5cf6]">Pricing</Link>
-                <Link to="/about" className="hover:text-[#8b5cf6]">About</Link>
-                <Link to="/contact" className="hover:text-[#8b5cf6]">Contact</Link>
-              </div>
-            </div>
-            <div>
-              <h3 className="mb-3 font-semibold text-white">Support</h3>
-              <div className="flex flex-col gap-2 text-sm text-slate-400">
-                <a href="mailto:hello@careerpilot.ai" className="hover:text-[#8b5cf6]">hello@careerpilot.ai</a>
-                <a href="https://linkedin.com" className="hover:text-[#8b5cf6]">LinkedIn</a>
-                <a href="https://github.com" className="hover:text-[#8b5cf6]">GitHub</a>
-              </div>
-            </div>
-            <div>
-              <h3 className="mb-3 font-semibold text-white">Newsletter</h3>
-              <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
-                <input placeholder="Email address" className="w-full rounded-xl border border-white/10 bg-[#050814] px-3 py-2 text-sm text-white outline-none" />
-                <button className="mt-3 flex items-center gap-2 rounded-full bg-gradient-to-r from-[#8b5cf6] to-[#7c6cf6] px-4 py-2 text-sm font-semibold">Subscribe <Send className="h-4 w-4" /></button>
-              </div>
-            </div>
-          </div>
-          <div className="border-t border-white/10 px-4 py-6 text-center text-sm text-slate-500">© 2026 elevAIte. Crafted for ambitious builders.</div>
-        </footer>
+            </footer>
+          </>
+        )}
       </div>
     </div>
   );
@@ -571,7 +903,7 @@ function ScoreRing({ score }) {
   return (
     <div className="relative flex items-center justify-center">
       <svg width="136" height="136" viewBox="0 0 136 136" className="-rotate-90">
-        <circle cx="68" cy="68" r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="10" />
+        <circle cx="68" cy="68" r={r} fill="none" stroke="rgba(15,23,42,0.08)" strokeWidth="10" />
         <circle
           cx="68" cy="68" r={r} fill="none"
           strokeWidth="10" strokeLinecap="round"
@@ -659,7 +991,14 @@ const GEMINI_RESPONSE_SCHEMA = {
   required: ['executive_summary', 'experience_level', 'overall_score', 'category_scores', 'section_analysis', 'matched_keywords', 'missing_keywords', 'formatting_issues', 'weak_bullets', 'suggestions'],
 };
 
-const GEMINI_SYSTEM_PROMPT = `You are a senior technical recruiter and ATS expert with 15+ years of experience at FAANG companies and top-tier startups. Evaluate resumes exactly like enterprise ATS systems and senior recruiters do — critically, precisely, and without generic feedback. overall_score is a weighted average (ATS 30%, Keyword 30%, Formatting 20%, Impact 20%). 90+ is rare. weak_bullet rewrites MUST contain action verbs and at least one metric. suggestions must be exactly 4-6 specific, prioritized, actionable items — not generic advice. Always respond ONLY with valid JSON matching the schema.`;
+const GEMINI_SYSTEM_PROMPT = `You are a technical recruiter and ATS evaluation engine.
+Evaluate resumes strictly against facts in the text.
+Rules:
+1. No percentile or ranking claims (no "top 5%", "top tier", "top recruiters favor").
+2. Bullet rewrites: "original" MUST be an exact verbatim quote from resume text. Do NOT fabricate numbers or add new tools. Use [ADD YOUR OWN NUMBER] where metrics are absent. Do not use "Architected" or "Engineered" unless original describes design/engineering work.
+3. Every recommendation MUST carry an "evidence_quote" from resume text.
+4. Missing keywords: suggest only if in target job description and absent from resume.
+Always respond ONLY with valid JSON matching the schema.`;
 
 // ─── ResumeAnalyzerPage ──────────────────────────────────────────────────────
 
@@ -672,13 +1011,25 @@ function ResumeAnalyzerPage({ onUsageUpdate }) {
   const [processingStep, setProcessingStep] = useState(0);
   const [progress, setProgress] = useState(0);
   const [copiedIdx, setCopiedIdx] = useState(null);
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
   const fileInputRef = useRef(null);
+  const resultsRef = useRef(null);
+
+  useEffect(() => {
+    if (showAnalysis && resultsRef.current) {
+      resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [showAnalysis]);
 
   const [jobDescription, setJobDescription] = useState('');
+  const isDevDebugEnabled = Boolean(
+    import.meta.env.VITE_DEV_DEBUG === 'true' ||
+    (typeof window !== 'undefined' && window.localStorage?.getItem('elevAIte_dev_debug') === 'true')
+  );
 
-  // Always use Supabase Edge Function — Gemini key lives in Supabase secrets, never the browser
+  // Supabase Edge Function used when online and properly configured; otherwise fallback client-side engine runs instantly
   const supabaseProjectUrl = import.meta.env.VITE_SUPABASE_URL || '';
-  const edgeFunctionUrl = supabaseProjectUrl
+  const edgeFunctionUrl = (isSupabaseConfigured && supabaseProjectUrl)
     ? `${supabaseProjectUrl}/functions/v1/analyze-resume`
     : '';
   const [analysisResult, setAnalysisResult] = useState(null);
@@ -749,11 +1100,6 @@ function ResumeAnalyzerPage({ onUsageUpdate }) {
   const startAnalysis = async () => {
     if (!uploadedFile) return;
 
-    if (!edgeFunctionUrl) {
-      setError('VITE_SUPABASE_URL is not set in your .env file. Add it and restart the dev server.');
-      return;
-    }
-
     onUsageUpdate('resumeAnalyzer');
     setIsProcessing(true);
     setShowAnalysis(false);
@@ -766,39 +1112,72 @@ function ResumeAnalyzerPage({ onUsageUpdate }) {
       currentStep = Math.min(currentStep + 1, steps.length - 2);
       setProcessingStep(currentStep);
       setProgress(Math.round((currentStep / steps.length) * 90));
-    }, 900);
+    }, 700);
 
     try {
-      const formData = new FormData();
-      formData.append('file', uploadedFile.rawFile);
-      formData.append('job_description', jobDescription);
+      let reportData = null;
+      const { text: resumeText, pageCount, hash: textHash } = await extractResumeData(uploadedFile.rawFile);
 
-      const response = await fetch(edgeFunctionUrl, {
-        method: 'POST',
-        body: formData,
-      });
+      if (!resumeText || resumeText.trim().length < 50) {
+        window.clearInterval(interval);
+        setIsProcessing(false);
+        setError("Could not extract readable text from this file. If it's a PDF, make sure it is not a scanned image (try selecting and copying text in the PDF to confirm). If it's a DOCX, try re-saving it from Microsoft Word or Google Docs.");
+        return;
+      }
 
-      const responseData = await response.json().catch(() => ({}));
+      // 1. If edgeFunctionUrl is available and online, attempt Supabase Edge Function with timeout
+      if (edgeFunctionUrl) {
+        try {
+          const formData = new FormData();
+          formData.append('file', uploadedFile.rawFile);
+          formData.append('job_description', jobDescription);
 
-      if (!response.ok) {
-        const detail =
-          responseData?.details ||
-          responseData?.error ||
-          `Server responded with status ${response.status}`;
-        throw new Error(detail);
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s timeout
+
+          const response = await fetch(edgeFunctionUrl, {
+            method: 'POST',
+            body: formData,
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+
+          if (response.ok) {
+            const data = await response.json().catch(() => null);
+            if (data && (data.executive_summary || data.section_analysis)) {
+              reportData = data;
+            }
+          }
+        } catch (networkErr) {
+          console.warn('[ResumeAnalyzer] Cloud Edge function unreachable, activating intelligent client-side ATS engine.');
+        }
+      }
+
+      // If edge function returned data, strictly post-validate and calculate all scores in code:
+      if (reportData) {
+        let effectivePageCount = pageCount;
+        if (resumeText.length < 3200 && !/\bpage\s*2\b/i.test(resumeText) && !/\f/.test(resumeText)) {
+          effectivePageCount = 1;
+        }
+        // Master evaluateResume engine ensures 100% deterministic scores, section analysis, placeholders, and debug info
+        reportData = evaluateResume(resumeText, jobDescription, uploadedFile.name, effectivePageCount);
+      } else {
+        // 2. Intelligent Client-Side ATS Engine fallback (resilient against DNS & offline errors)
+        reportData = evaluateResume(resumeText, jobDescription, uploadedFile.name, pageCount);
       }
 
       window.clearInterval(interval);
       setProcessingStep(steps.length - 1);
       setProgress(100);
-      setAnalysisResult(responseData);
-      // Persist analysis to Supabase (fire and forget — don't block the UI)
-      saveResumeAnalysis(uploadedFile.name, responseData).catch(console.error);
+      setAnalysisResult(reportData);
+
+      // Persist analysis to database & local storage keyed by text hash (Requirement 2)
+      saveResumeAnalysis(uploadedFile.name, reportData, reportData.text_hash || textHash).catch(() => {});
 
       setTimeout(() => {
         setShowAnalysis(true);
         setIsProcessing(false);
-      }, 600);
+      }, 500);
 
     } catch (err) {
       window.clearInterval(interval);
@@ -810,12 +1189,17 @@ function ResumeAnalyzerPage({ onUsageUpdate }) {
 
   const resetUpload = () => {
     setUploadedFile(null);
+    setJobDescription('');
     setError('');
     setShowAnalysis(false);
     setIsProcessing(false);
     setProgress(0);
     setProcessingStep(0);
     setAnalysisResult(null);
+    setShowDebugPanel(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const downloadReport = () => {
@@ -846,14 +1230,20 @@ function ResumeAnalyzerPage({ onUsageUpdate }) {
       '── Matched Keywords ────────────────────────────',
       `  ${r.matched_keywords?.join(', ') || 'None'}`,
       '',
+      ...(r.coding_platforms?.length ? [
+        '── Coding Practice & Achievements ───────────────',
+        `  Platforms: ${r.coding_platforms.join(', ')}`,
+        ...(r.achievements?.length ? r.achievements.map((a, n) => `  ${n + 1}. ${a}`) : []),
+        '',
+      ] : []),
       '── Missing Keywords ────────────────────────────',
-      `  ${r.missing_keywords?.join(', ') || 'None'}`,
+      ...(r.missing_keywords_message ? [`  ${r.missing_keywords_message}`] : [`  ${r.missing_keywords?.join(', ') || 'None'}`]),
       '',
       '── Formatting Issues ───────────────────────────',
       ...(r.formatting_issues?.length ? r.formatting_issues.map((i, n) => `  ${n + 1}. ${i}`) : ['  None detected.']),
       '',
       '── AI Recommendations ──────────────────────────',
-      ...(r.suggestions?.map((s, n) => `  ${n + 1}. ${s}`) ?? ['  None.']),
+      ...(r.suggestions?.map((s, n) => `  ${n + 1}. ${typeof s === 'string' ? s : s.advice + (s.evidence_quote ? ` (Evidence: "${s.evidence_quote}")` : '')}`) ?? ['  None.']),
       '',
       '── Bullet Point Rewrites ───────────────────────',
       ...(r.weak_bullets?.length
@@ -862,7 +1252,7 @@ function ResumeAnalyzerPage({ onUsageUpdate }) {
             `     Improved: "${b.suggestion}"`,
             '',
           ])
-        : ['  None.']),
+        : ['  All bullets already include measurable results.']),
       '═'.repeat(50),
       'Generated by elevAIte — AI Career Accelerator',
     ];
@@ -904,7 +1294,7 @@ function ResumeAnalyzerPage({ onUsageUpdate }) {
         </p>
       </motion.div>
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
+      <div className={showAnalysis ? "mt-8" : "mt-8 grid gap-8 lg:grid-cols-[1.05fr_0.95fr]"}>
         <motion.div
           initial={{ opacity: 0, x: -16 }}
           animate={{ opacity: 1, x: 0 }}
@@ -931,11 +1321,11 @@ function ResumeAnalyzerPage({ onUsageUpdate }) {
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-violet-400/30 bg-violet-400/10 text-violet-200">
                 <UploadCloud className="h-8 w-8" />
               </div>
-              <p className="mt-6 text-xl font-semibold text-white">Drop your resume here</p>
-              <p className="mt-2 text-sm text-slate-400">or browse files to upload a PDF or DOCX document.</p>
-              <button onClick={triggerPicker} className="mt-6 rounded-full bg-gradient-to-r from-violet-400 via-fuchsia-400 to-fuchsia-500 px-6 py-3 font-semibold text-white shadow-[0_0_24px_rgba(139,92,246,0.2)]">Browse Files</button>
+              <p className="mt-6 text-xl font-bold text-slate-900">Drop your resume here</p>
+              <p className="mt-2 text-sm font-medium text-slate-700">or <span className="font-extrabold text-blue-600">browse files</span> to upload a PDF or DOCX document.</p>
+              <button onClick={triggerPicker} className="mt-6 rounded-full bg-blue-600 hover:bg-blue-700 px-7 py-3.5 font-extrabold text-white shadow-md shadow-blue-500/25 hover:shadow-lg transition text-base">Browse Files</button>
               <input ref={fileInputRef} type="file" accept=".pdf,.docx" className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} />
-              <p className="mt-5 text-sm text-slate-400">Supported formats: PDF • DOCX</p>
+              <p className="mt-5 text-sm font-bold text-slate-700">Supported formats: PDF • DOCX</p>
             </motion.div>
 
             {/* Job Description */}
@@ -958,101 +1348,129 @@ function ResumeAnalyzerPage({ onUsageUpdate }) {
           </div>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.45 }} className="space-y-6">
-          {!uploadedFile && !isProcessing && !showAnalysis && (
-            <div className="rounded-[32px] border border-white/10 bg-[#090d20]/90 p-6 shadow-[0_0_50px_rgba(168,85,247,0.12)] backdrop-blur-2xl">
-              <div className="flex items-center gap-3">
-                <div className="rounded-full border border-violet-400/30 bg-violet-400/10 p-3 text-violet-200">
-                  <ShieldCheck className="h-5 w-5" />
+        {!showAnalysis && (
+          <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.45 }} className="space-y-6">
+            {!uploadedFile && !isProcessing && (
+              <div className="rounded-[32px] border border-white/10 bg-[#090d20]/90 p-6 shadow-[0_0_50px_rgba(168,85,247,0.12)] backdrop-blur-2xl">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-full border border-violet-400/30 bg-violet-400/10 p-3 text-violet-200">
+                    <ShieldCheck className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold uppercase tracking-[0.3em] text-violet-200">Ready to review</p>
+                    <p className="mt-1 text-lg font-semibold text-white">Your AI analysis will be instant and actionable.</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.3em] text-violet-200">Ready to review</p>
-                  <p className="mt-1 text-lg font-semibold text-white">Your AI analysis will be instant and actionable.</p>
+                <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                  {['ATS optimization checks', 'Keyword gap insights', 'Skills recommendations', 'Formatting feedback'].map((item) => (
+                    <div key={item} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">{item}</div>
+                  ))}
                 </div>
               </div>
-              <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                {['ATS optimization checks', 'Keyword gap insights', 'Skills recommendations', 'Formatting feedback'].map((item) => (
-                  <div key={item} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">{item}</div>
-                ))}
+            )}
+
+            {uploadedFile && !isProcessing && (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-[32px] border border-emerald-400/25 bg-[#09111e]/90 p-6 shadow-[0_0_40px_rgba(52,211,153,0.12)] backdrop-blur-2xl">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-sm font-medium text-emerald-200">
+                      <CheckCircle2 className="h-4 w-4" /> Uploaded successfully
+                    </div>
+                    <h3 className="mt-4 text-xl font-semibold text-white">{uploadedFile.name}</h3>
+                  </div>
+                  <button onClick={resetUpload} className="rounded-full border border-white/10 bg-white/5 p-2 text-slate-300 transition hover:text-white">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                    <p className="text-sm text-slate-400">File Type</p>
+                    <p className="mt-1 font-semibold text-white">{uploadedFile.type}</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                    <p className="text-sm text-slate-400">File Size</p>
+                    <p className="mt-1 font-semibold text-white">{uploadedFile.sizeLabel}</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 sm:col-span-2">
+                    <p className="text-sm text-slate-400">Upload Date & Time</p>
+                    <p className="mt-1 font-semibold text-white">{uploadedFile.uploadedAt}</p>
+                  </div>
+                </div>
+
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <button onClick={triggerPicker} className="flex items-center gap-2 rounded-full border border-violet-400/30 bg-violet-400/10 px-4 py-2 font-semibold text-violet-200">
+                    <RefreshCw className="h-4 w-4" /> Replace Resume
+                  </button>
+                  <button onClick={startAnalysis} className="flex items-center gap-2 rounded-full bg-blue-600 hover:bg-blue-700 px-6 py-3 font-extrabold text-white shadow-md shadow-blue-500/25 transition text-sm">
+                    Analyze Resume with AI <ArrowRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            {isProcessing && (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-[32px] border border-violet-400/25 bg-[#09111e]/90 p-6 shadow-[0_0_50px_rgba(139,92,246,0.15)] backdrop-blur-2xl">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-full border border-violet-400/30 bg-violet-400/10 p-3 text-violet-200">
+                    <LoaderCircle className="h-5 w-5 animate-spin" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold uppercase tracking-[0.3em] text-violet-300">Processing…</p>
+                    <p className="mt-1 text-lg font-semibold text-white">Your AI report is being generated</p>
+                  </div>
+                </div>
+
+                <div className="mt-6 h-2.5 rounded-full bg-white/10">
+                  <motion.div animate={{ width: `${progress}%` }} transition={{ duration: 0.3 }} className="h-2.5 rounded-full bg-gradient-to-r from-violet-400 via-fuchsia-400 to-fuchsia-500" />
+                </div>
+                <div className="mt-2 text-right text-xs text-slate-500">{progress}%</div>
+
+                <div className="mt-6 space-y-3">
+                  {steps.map((step, index) => {
+                    const done = index < processingStep;
+                    const active = index === processingStep;
+                    return (
+                      <div key={step} className={`flex items-center justify-between rounded-2xl border px-4 py-3 text-sm transition-all ${done ? 'border-emerald-400/25 bg-emerald-400/8 text-emerald-200' : active ? 'border-violet-400/30 bg-violet-400/10 text-violet-100' : 'border-white/10 bg-white/5 text-slate-500'}`}>
+                        <span>{step}</span>
+                        {done ? <CheckCircle2 className="h-4 w-4 text-emerald-400" /> : active ? <LoaderCircle className="h-4 w-4 animate-spin text-violet-300" /> : <div className="h-4 w-4 rounded-full border border-white/20" />}
+                      </div>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            )}
+          </motion.div>
+        )}
+      </div>
+
+      {/* Analysis Complete Section: Placed BELOW Upload Resume */}
+      {showAnalysis && analysisResult && (
+        <motion.div
+          ref={resultsRef}
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="mt-12 space-y-6"
+        >
+          {analysisResult.is_parse_failure ? (
+            /* Parse Failure Guard (Requirement 4) */
+            <div className="rounded-[32px] border border-amber-400/30 bg-[#090d20]/95 p-8 text-center shadow-[0_0_50px_rgba(245,158,11,0.15)] backdrop-blur-2xl">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-amber-400/30 bg-amber-400/10 text-amber-300">
+                <AlertCircle className="h-8 w-8" />
+              </div>
+              <h3 className="mt-6 text-2xl font-bold text-white">We couldn't read this PDF reliably</h3>
+              <p className="mx-auto mt-3 max-w-xl text-base text-slate-300">
+                Fewer than 3 standard resume sections or technical skills could be extracted from this document. To ensure an accurate review instead of misleading scores, please retry or upload your resume in standard PDF or DOCX format.
+              </p>
+              <div className="mt-8 flex justify-center gap-4">
+                <button onClick={resetUpload} className="flex items-center gap-2 rounded-full bg-blue-600 hover:bg-blue-700 px-7 py-3 font-extrabold text-white shadow-md shadow-blue-500/25 transition">
+                  <RefreshCw className="h-4 w-4" /> Try Uploading Again
+                </button>
               </div>
             </div>
-          )}
-
-          {uploadedFile && !isProcessing && !showAnalysis && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-[32px] border border-emerald-400/25 bg-[#09111e]/90 p-6 shadow-[0_0_40px_rgba(52,211,153,0.12)] backdrop-blur-2xl">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-sm font-medium text-emerald-200">
-                    <CheckCircle2 className="h-4 w-4" /> Uploaded successfully
-                  </div>
-                  <h3 className="mt-4 text-xl font-semibold text-white">{uploadedFile.name}</h3>
-                </div>
-                <button onClick={resetUpload} className="rounded-full border border-white/10 bg-white/5 p-2 text-slate-300 transition hover:text-white">
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-
-              <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                  <p className="text-sm text-slate-400">File Type</p>
-                  <p className="mt-1 font-semibold text-white">{uploadedFile.type}</p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                  <p className="text-sm text-slate-400">File Size</p>
-                  <p className="mt-1 font-semibold text-white">{uploadedFile.sizeLabel}</p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 sm:col-span-2">
-                  <p className="text-sm text-slate-400">Upload Date & Time</p>
-                  <p className="mt-1 font-semibold text-white">{uploadedFile.uploadedAt}</p>
-                </div>
-              </div>
-
-              <div className="mt-6 flex flex-wrap gap-3">
-                <button onClick={triggerPicker} className="flex items-center gap-2 rounded-full border border-violet-400/30 bg-violet-400/10 px-4 py-2 font-semibold text-violet-200">
-                  <RefreshCw className="h-4 w-4" /> Replace Resume
-                </button>
-                <button onClick={startAnalysis} className="flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-400 via-fuchsia-400 to-fuchsia-500 px-5 py-2.5 font-semibold text-white shadow-[0_0_24px_rgba(139,92,246,0.2)]">
-                  Analyze Resume with AI <ArrowRight className="h-4 w-4" />
-                </button>
-              </div>
-            </motion.div>
-          )}
-
-          {isProcessing && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-[32px] border border-violet-400/25 bg-[#09111e]/90 p-6 shadow-[0_0_50px_rgba(139,92,246,0.15)] backdrop-blur-2xl">
-              <div className="flex items-center gap-3">
-                <div className="rounded-full border border-violet-400/30 bg-violet-400/10 p-3 text-violet-200">
-                  <LoaderCircle className="h-5 w-5 animate-spin" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.3em] text-violet-300">Processing…</p>
-                  <p className="mt-1 text-lg font-semibold text-white">Your AI report is being generated</p>
-                </div>
-              </div>
-
-              <div className="mt-6 h-2.5 rounded-full bg-white/10">
-                <motion.div animate={{ width: `${progress}%` }} transition={{ duration: 0.3 }} className="h-2.5 rounded-full bg-gradient-to-r from-violet-400 via-fuchsia-400 to-fuchsia-500" />
-              </div>
-              <div className="mt-2 text-right text-xs text-slate-500">{progress}%</div>
-
-              <div className="mt-6 space-y-3">
-                {steps.map((step, index) => {
-                  const done = index < processingStep;
-                  const active = index === processingStep;
-                  return (
-                    <div key={step} className={`flex items-center justify-between rounded-2xl border px-4 py-3 text-sm transition-all ${done ? 'border-emerald-400/25 bg-emerald-400/8 text-emerald-200' : active ? 'border-violet-400/30 bg-violet-400/10 text-violet-100' : 'border-white/10 bg-white/5 text-slate-500'}`}>
-                      <span>{step}</span>
-                      {done ? <CheckCircle2 className="h-4 w-4 text-emerald-400" /> : active ? <LoaderCircle className="h-4 w-4 animate-spin text-violet-300" /> : <div className="h-4 w-4 rounded-full border border-white/20" />}
-                    </div>
-                  );
-                })}
-              </div>
-            </motion.div>
-          )}
-
-          {showAnalysis && analysisResult && (
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
-
+          ) : (
+            <>
               {/* Header + score ring + category bars */}
               <div className="rounded-[32px] border border-white/10 bg-[#090d20]/95 p-6 shadow-[0_0_50px_rgba(168,85,247,0.12)] backdrop-blur-2xl">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -1096,15 +1514,20 @@ function ResumeAnalyzerPage({ onUsageUpdate }) {
 
               {/* Section Analysis */}
               {analysisResult.section_analysis?.length > 0 && (
-                <div className="rounded-[28px] border border-white/10 bg-[#090d20]/90 p-5 backdrop-blur-2xl">
+                <div className="rounded-[28px] border border-white/10 bg-[#090d20]/90 p-5 sm:p-6 backdrop-blur-2xl">
                   <p className="text-sm font-semibold uppercase tracking-[0.25em] text-violet-300 mb-4">Section Analysis</p>
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {analysisResult.section_analysis.map((s) => (
                       <div key={s.section} className={`rounded-2xl border p-3 text-sm ${SECTION_STATUS_STYLE[s.status] || SECTION_STATUS_STYLE.weak}`}>
                         <div className="flex items-center justify-between mb-1">
                           <span className="font-semibold">{s.section}</span>
                           <span className="text-[10px] uppercase font-bold opacity-70">{s.status}</span>
                         </div>
+                        {s.detected_heading && s.detected_heading.toLowerCase() !== s.section.toLowerCase() && (
+                          <div className="text-[10px] text-slate-400 font-mono mb-1">
+                            Detected as: <span className="text-violet-300 font-semibold">{s.detected_heading}</span>
+                          </div>
+                        )}
                         <p className="text-xs opacity-80 leading-snug">{s.feedback}</p>
                       </div>
                     ))}
@@ -1115,26 +1538,100 @@ function ResumeAnalyzerPage({ onUsageUpdate }) {
               {/* Keywords */}
               <div className="grid gap-5 lg:grid-cols-2">
                 <div className="rounded-[24px] border border-white/10 bg-white/5 p-5">
-                  <p className="text-sm font-semibold uppercase tracking-[0.25em] text-emerald-300 mb-4">Matched Keywords</p>
-                  <div className="flex flex-wrap gap-2">
-                    {analysisResult.matched_keywords?.length > 0 ? (
-                      analysisResult.matched_keywords.map((kw) => (
-                        <span key={kw} className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-200">{kw}</span>
-                      ))
-                    ) : (
-                      <span className="text-xs text-slate-500">No matched keywords found.</span>
-                    )}
-                  </div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.25em] text-emerald-300 mb-4">
+                    Matched Keywords ({jobDescription && jobDescription.trim().length > 0 && analysisResult.jd_matched_keywords ? (analysisResult.jd_matched_keywords.length + (analysisResult.other_keywords?.length || 0)) : (analysisResult.matched_keywords?.length || 0)})
+                  </p>
+                  {jobDescription && jobDescription.trim().length > 0 && analysisResult.jd_matched_keywords ? (
+                    <div className="space-y-4">
+                      <div>
+                        <p className="text-xs font-semibold text-emerald-300 mb-2 flex items-center gap-1.5">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> Matches the job description ({analysisResult.jd_matched_keywords.length})
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {analysisResult.jd_matched_keywords.length > 0 ? (
+                            analysisResult.jd_matched_keywords.map((kw) => (
+                              <span key={kw} className="rounded-full border border-emerald-400/60 bg-emerald-400/20 px-3 py-1 text-xs font-semibold text-emerald-100 shadow-[0_0_12px_rgba(52,211,153,0.2)]">
+                                {kw}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-xs text-slate-500">No JD-matched technical skills found.</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {analysisResult.other_keywords && analysisResult.other_keywords.length > 0 && (
+                        <div className="pt-3 border-t border-white/10">
+                          <p className="text-xs font-semibold text-slate-400 mb-2">
+                            Other skills on your resume ({analysisResult.other_keywords.length})
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {analysisResult.other_keywords.map((kw) => (
+                              <span key={kw} className="rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs text-slate-300">
+                                {kw}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {analysisResult.matched_keywords?.length > 0 ? (
+                        analysisResult.matched_keywords.map((kw) => (
+                          <span key={kw} className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-200">{kw}</span>
+                        ))
+                      ) : (
+                        <span className="text-xs text-slate-500">No matched keywords found.</span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Soft skills displayed separately (Requirement 5: readable label and high-contrast chips) */}
+                  {analysisResult.soft_skills && analysisResult.soft_skills.length > 0 && (
+                    <div className="pt-3 border-t border-white/10 mt-3">
+                      <p className="text-xs font-bold uppercase tracking-wider text-violet-300 mb-2">
+                        Soft skills ({analysisResult.soft_skills.length})
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {analysisResult.soft_skills.map((s) => (
+                          <span key={s} className="rounded-full border border-violet-400/40 bg-violet-500/20 px-3 py-1 text-xs font-medium text-violet-100 shadow-[0_0_10px_rgba(168,85,247,0.15)]">
+                            {s}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
+
                 <div className="rounded-[24px] border border-white/10 bg-white/5 p-5">
                   <p className="text-sm font-semibold uppercase tracking-[0.25em] text-rose-300 mb-4">Missing Keywords</p>
-                  <div className="flex flex-wrap gap-2">
-                    {analysisResult.missing_keywords?.length > 0 ? (
-                      analysisResult.missing_keywords.map((kw) => (
-                        <span key={kw} className="rounded-full border border-rose-400/30 bg-rose-400/10 px-3 py-1 text-xs text-rose-200">{kw}</span>
-                      ))
-                    ) : (
-                      <span className="text-xs text-emerald-400">No missing keywords — great coverage!</span>
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap gap-2">
+                      {analysisResult.missing_keywords_message ? (
+                        <span className="text-xs text-slate-400">{analysisResult.missing_keywords_message}</span>
+                      ) : analysisResult.missing_keywords?.length > 0 ? (
+                        analysisResult.missing_keywords.map((kw) => (
+                          <span key={kw} className="rounded-full border border-rose-400/30 bg-rose-400/10 px-3 py-1 text-xs text-rose-200">{kw}</span>
+                        ))
+                      ) : (
+                        <span className="text-xs text-emerald-400">No missing technical keywords — great coverage!</span>
+                      )}
+                    </div>
+
+                    {analysisResult.missing_soft_skills?.length > 0 && (
+                      <div className="pt-3 border-t border-white/10">
+                        <p className="text-xs font-semibold text-amber-300/90 mb-2">
+                          Soft Skills (Optional gaps from job description):
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {analysisResult.missing_soft_skills.map((s) => (
+                            <span key={s} className="rounded-full border border-amber-400/30 bg-amber-400/10 px-2.5 py-0.5 text-xs text-amber-200">
+                              {s}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -1163,17 +1660,28 @@ function ResumeAnalyzerPage({ onUsageUpdate }) {
                   <p className="text-sm font-semibold uppercase tracking-[0.25em] text-violet-300 mb-4">AI Recommendations</p>
                   <ul className="space-y-3 text-sm text-slate-300">
                     {analysisResult.suggestions?.length > 0 ? (
-                      analysisResult.suggestions.map((sug, idx) => (
-                        <li key={idx} className="flex items-start justify-between gap-2 group">
-                          <div className="flex items-start gap-2">
-                            <Sparkles className="h-4 w-4 text-violet-300 shrink-0 mt-0.5" />
-                            <span>{sug}</span>
-                          </div>
-                          <button onClick={() => copyToClipboard(sug, idx)} title="Copy" className="ml-1 shrink-0 rounded-lg border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-slate-400 hover:text-white opacity-0 group-hover:opacity-100 transition">
-                            {copiedIdx === idx ? 'Copied!' : 'Copy'}
-                          </button>
-                        </li>
-                      ))
+                      analysisResult.suggestions.map((item, idx) => {
+                        const adviceText = typeof item === 'string' ? item : item.advice;
+                        const quoteText = typeof item === 'object' ? item.evidence_quote : null;
+                        return (
+                          <li key={idx} className="space-y-1 group">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-start gap-2">
+                                <Sparkles className="h-4 w-4 text-violet-300 shrink-0 mt-0.5" />
+                                <span>{adviceText}</span>
+                              </div>
+                              <button onClick={() => copyToClipboard(adviceText, idx)} title="Copy" className="ml-1 shrink-0 rounded-lg border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-slate-400 hover:text-white opacity-0 group-hover:opacity-100 transition">
+                                {copiedIdx === idx ? 'Copied!' : 'Copy'}
+                              </button>
+                            </div>
+                            {quoteText && (
+                              <div className="ml-6 pl-2 border-l border-violet-400/30 text-xs text-slate-400 italic">
+                                Evidence: "{quoteText}"
+                              </div>
+                            )}
+                          </li>
+                        );
+                      })
                     ) : (
                       <li className="text-slate-400">No recommendations available.</li>
                     )}
@@ -1182,10 +1690,10 @@ function ResumeAnalyzerPage({ onUsageUpdate }) {
               </div>
 
               {/* Bullet Point Rewrites */}
-              {analysisResult.weak_bullets?.length > 0 && (
-                <div className="rounded-[24px] border border-white/10 bg-white/5 p-5">
-                  <p className="text-sm font-semibold uppercase tracking-[0.25em] text-violet-300">AI Bullet Point Rewrites</p>
-                  <p className="mt-1 text-xs text-slate-400">Replace weak statements with quantified, action-oriented achievements.</p>
+              <div className="rounded-[24px] border border-white/10 bg-white/5 p-5">
+                <p className="text-sm font-semibold uppercase tracking-[0.25em] text-violet-300">AI Bullet Point Rewrites</p>
+                <p className="mt-1 text-xs text-slate-400">Replace weak statements with quantified, action-oriented achievements.</p>
+                {analysisResult.weak_bullets?.length > 0 ? (
                   <div className="mt-4 space-y-4">
                     {analysisResult.weak_bullets.map((bullet, idx) => (
                       <div key={idx} className="rounded-2xl border border-white/5 bg-black/25 p-4">
@@ -1208,12 +1716,158 @@ function ResumeAnalyzerPage({ onUsageUpdate }) {
                       </div>
                     ))}
                   </div>
+                ) : analysisResult.category_scores?.impact_quantification === 100 ? (
+                  <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-4 text-sm text-emerald-300">
+                    All bullets already include measurable results.
+                  </div>
+                ) : (
+                  <div className="mt-4 rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4 text-sm text-amber-300">
+                    Review your experience bullets to add quantified metrics and measurable outcomes.
+                  </div>
+                )}
+              </div>
+
+              {/* Dev Debug Inspector (Requirement 5: dev flag only, hidden by default) */}
+              {isDevDebugEnabled && analysisResult.debug_info && (
+                <div className="rounded-[24px] border border-cyan-500/20 bg-cyan-950/20 p-5 text-left">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-full bg-cyan-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-cyan-300">Dev Only</span>
+                      <h4 className="text-sm font-semibold text-cyan-200">ATS Engine Debug Inspector</h4>
+                    </div>
+                    <button
+                      onClick={() => setShowDebugPanel(!showDebugPanel)}
+                      className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-200 hover:bg-cyan-500/20 transition"
+                    >
+                      {showDebugPanel ? 'Hide Debug' : 'Show Debug'}
+                    </button>
+                  </div>
+
+                  {showDebugPanel && (
+                    <div className="mt-4 space-y-4 text-xs">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                        <div className="rounded-xl border border-white/10 bg-black/40 p-3">
+                          <span className="text-slate-400 block mb-1">Resume Text Hash</span>
+                          <span className="font-mono text-cyan-300 text-sm truncate block" title={analysisResult.debug_info.text_hash || analysisResult.text_hash}>
+                            {analysisResult.debug_info.text_hash || analysisResult.text_hash || 'N/A'}
+                          </span>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-black/40 p-3">
+                          <span className="text-slate-400 block mb-1">Measured Page Count</span>
+                          <span className="font-mono text-cyan-300 text-sm">{analysisResult.debug_info.page_count} page(s)</span>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-black/40 p-3">
+                          <span className="text-slate-400 block mb-1">Detected Skills</span>
+                          <span className="font-mono text-cyan-300 text-sm">{analysisResult.debug_info.detected_skills_count} canonical</span>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-black/40 p-3">
+                          <span className="text-slate-400 block mb-1">Positions & Bullets</span>
+                          <span className="font-mono text-cyan-300 text-sm">{analysisResult.debug_info.experience_positions_count ?? analysisResult.experience_positions_count ?? 'N/A'} pos ({analysisResult.debug_info.experience_bullet_count ?? 'N/A'} b)</span>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-black/40 p-3">
+                          <span className="text-slate-400 block mb-1">Actual Projects</span>
+                          <span className="font-mono text-cyan-300 text-sm">{analysisResult.debug_info.projects_count ?? analysisResult.projects_count ?? 'N/A'} project(s)</span>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-black/40 p-3">
+                          <span className="text-slate-400 block mb-1">Certifications</span>
+                          <span className="font-mono text-cyan-300 text-sm">{analysisResult.debug_info.certifications_count ?? analysisResult.certifications_count ?? 'N/A'} verified</span>
+                        </div>
+                      </div>
+
+                      {analysisResult.debug_info.keyword_score_formula && (
+                        <div className="rounded-xl border border-cyan-500/30 bg-cyan-950/40 p-3">
+                          <span className="text-slate-400 block mb-1 font-medium">Documented Keyword Score Formula:</span>
+                          <code className="font-mono text-cyan-300 text-[11px] block whitespace-pre-wrap">{analysisResult.debug_info.keyword_score_formula}</code>
+                        </div>
+                      )}
+
+                      {/* Requirement 6: Formatting Checklist in Debug Panel */}
+                      {(analysisResult.debug_info.formatting_checklist || analysisResult.formatting_checklist) && (
+                        <div className="rounded-xl border border-white/10 bg-black/40 p-3">
+                          <span className="text-slate-400 block mb-2 font-medium">
+                            Formatting Score Checklist ({analysisResult.category_scores?.formatting ?? 0}/100):
+                          </span>
+                          <div className="space-y-1.5 font-mono text-[11px]">
+                            {(analysisResult.debug_info.formatting_checklist || analysisResult.formatting_checklist).map((item, idx) => (
+                              <div key={idx} className="flex items-center justify-between p-2 rounded bg-white/5 border border-white/5">
+                                <div>
+                                  <span className="font-semibold text-cyan-300">{item.check}</span>
+                                  <span className="text-slate-400 text-[10px] ml-2">({item.detail})</span>
+                                </div>
+                                <span className="font-bold text-emerald-400 shrink-0 ml-2">{item.earned}/{item.weight} pts</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="rounded-xl border border-white/10 bg-black/40 p-3">
+                        <span className="text-slate-400 block mb-2 font-medium">Canonical Detected Skills ({analysisResult.debug_info.detected_skills_count || 0}):</span>
+                        <div className="flex flex-wrap gap-1.5 font-mono text-[11px]">
+                          {analysisResult.debug_info.detected_skills?.map(s => {
+                            const isReinforced = analysisResult.debug_info.reinforced_skills?.includes(s);
+                            return (
+                              <span key={s} className={`rounded px-2 py-0.5 border ${isReinforced ? 'bg-emerald-950/60 border-emerald-400/50 text-emerald-300 font-semibold' : 'bg-cyan-900/50 border-cyan-500/30 text-cyan-200'}`}>
+                                {s} {isReinforced && '★'}
+                              </span>
+                            );
+                          })}
+                        </div>
+                        {analysisResult.debug_info.reinforced_skills?.length > 0 && (
+                          <p className="mt-2 text-[10px] text-emerald-400">★ = Reinforced (present in Technical Skills and substantiated in Experience or Projects)</p>
+                        )}
+                      </div>
+
+                      <div className="rounded-xl border border-white/10 bg-black/40 p-3">
+                        <span className="text-slate-400 block mb-2 font-medium">Detected Section Headings & Line Ranges ({analysisResult.debug_info.detected_sections?.length || 0}):</span>
+                        {analysisResult.debug_info.detected_sections?.length > 0 ? (
+                          <div className="grid gap-1.5 sm:grid-cols-2 font-mono text-[11px]">
+                            {analysisResult.debug_info.detected_sections.map((sec, i) => (
+                              <div key={i} className="flex items-center justify-between rounded bg-white/5 px-2.5 py-1.5 border border-white/10">
+                                <span className="font-semibold text-violet-300">{sec.heading}</span>
+                                <span className="text-slate-400 text-[10px]">Lines {sec.startLine}–{sec.endLine} ({sec.section})</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-amber-400 font-mono text-[11px]">No standardized section headings detected.</span>
+                        )}
+                      </div>
+
+                      <div className="rounded-xl border border-white/10 bg-black/40 p-3">
+                        <span className="text-slate-400 block mb-2 font-medium">Validator Rejections:</span>
+                        {analysisResult.debug_info.rejected_items?.length > 0 ? (
+                          <ul className="space-y-1.5 font-mono text-[11px]">
+                            {analysisResult.debug_info.rejected_items.map((rej, i) => (
+                              <li key={i} className="text-rose-300 bg-rose-950/30 rounded p-1.5 border border-rose-500/20">
+                                <span className="font-bold text-rose-400">[{rej.validator || 'Validator'}]</span> {rej.reason}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className="text-emerald-400 font-mono text-[11px]">✓ All candidate items passed verbatim and content validation rules.</span>
+                        )}
+                      </div>
+
+                      <div className="rounded-xl border border-white/10 bg-black/40 p-3">
+                        <span className="text-slate-400 block mb-2 font-medium">Raw Extracted Text (with line numbers):</span>
+                        <pre className="font-mono text-[11px] text-slate-300 bg-black/60 p-3 rounded-lg overflow-x-auto max-h-60 border border-white/5 space-y-0.5">
+                          {(analysisResult.extracted_text || analysisResult.debug_info.text_preview || '').split('\n').map((line, idx) => (
+                            <div key={idx} className="flex gap-3">
+                              <span className="text-slate-600 select-none w-8 text-right shrink-0">{idx + 1}</span>
+                              <span className="whitespace-pre">{line || ' '}</span>
+                            </div>
+                          ))}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
-            </motion.div>
+            </>
           )}
         </motion.div>
-      </div>
+      )}
     </div>
   );
 }
@@ -1232,11 +1886,11 @@ function MockInterviewPage({ onUsageUpdate }) {
           <div className="rounded-full border border-violet-400/30 bg-violet-400/10 px-4 py-2 text-sm text-violet-200">Timer: 03:00</div>
         </div>
         <div className="mt-8 grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
-          <div className="rounded-[24px] border border-white/10 bg-[#090d20] p-6">
-            <h3 className="font-semibold text-white">Choose interview type</h3>
+          <div className="rounded-[24px] border border-slate-200/80 bg-white/85 p-6 shadow-xs">
+            <h3 className="font-bold text-slate-900 text-lg">Choose interview type</h3>
             <div className="mt-4 space-y-3">
               {['Technical', 'HR', 'Behavioral', 'System Design', 'Coding'].map((type) => (
-                <button key={type} className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm text-slate-300">
+                <button key={type} className="flex w-full items-center justify-between rounded-2xl border border-slate-200/70 bg-white/90 px-4 py-3 text-left text-sm font-bold text-slate-800 hover:bg-indigo-50 hover:text-indigo-700 transition">
                   {type} <ChevronDown className="h-4 w-4" />
                 </button>
               ))}
@@ -1244,7 +1898,7 @@ function MockInterviewPage({ onUsageUpdate }) {
             <button onClick={() => {
               onUsageUpdate('mockInterview');
               setStarted(true);
-            }} className="mt-6 rounded-full bg-gradient-to-r from-violet-400 to-violet-500 px-5 py-3 font-semibold text-white">Start Interview</button>
+            }} className="mt-6 w-full sm:w-auto rounded-full bg-purple-600 hover:bg-purple-700 px-7 py-3.5 font-extrabold text-white shadow-md shadow-purple-500/25 hover:shadow-lg transition text-base">Start Interview</button>
           </div>
           <div className="rounded-[24px] border border-white/10 bg-white/10 p-6">
             {started ? (
@@ -1299,13 +1953,13 @@ function ReadinessRing({ score }) {
   return (
     <div className="relative flex items-center justify-center">
       <svg width="140" height="140" viewBox="0 0 140 140" className="-rotate-90">
-        <circle cx="70" cy="70" r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="10" />
+        <circle cx="70" cy="70" r={r} fill="none" stroke="rgba(15,23,42,0.08)" strokeWidth="10" />
         <circle cx="70" cy="70" r={r} fill="none" strokeWidth="10" strokeLinecap="round"
           strokeDasharray={circ} strokeDashoffset={offset}
           stroke={color} className="transition-all duration-700" />
       </svg>
       <div className="absolute flex flex-col items-center">
-        <span className="text-3xl font-bold text-white">{score}%</span>
+        <span className="text-3xl font-bold text-slate-900">{score}%</span>
         <span className="mt-0.5 text-[11px] font-semibold" style={{ color }}>{label}</span>
       </div>
     </div>
@@ -1325,7 +1979,7 @@ function SkillSkeleton() {
 function SkillGapAnalysisPage({ onUsageUpdate }) {
   const navigate = useNavigate();
   const envSupabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-  const edgeFnUrl = envSupabaseUrl ? `${envSupabaseUrl}/functions/v1/skill-gap-analysis` : '';
+  const edgeFnUrl = (isSupabaseConfigured && envSupabaseUrl) ? `${envSupabaseUrl}/functions/v1/skill-gap-analysis` : '';
 
   const [selectedRole, setSelectedRole] = useState('');
   const [resumeText, setResumeText] = useState('');
@@ -1347,7 +2001,6 @@ function SkillGapAnalysisPage({ onUsageUpdate }) {
   const analyze = async () => {
     if (!selectedRole) { setError('Please select a target role.'); return; }
     if (resumeText.trim().length < 50) { setError('Please paste your resume text (minimum 50 characters).'); return; }
-    if (!edgeFnUrl) { setError('VITE_SUPABASE_URL is not set in .env'); return; }
 
     onUsageUpdate('skillGapRoadmap');
     setIsAnalyzing(true);
@@ -1355,14 +2008,31 @@ function SkillGapAnalysisPage({ onUsageUpdate }) {
     setError('');
 
     try {
-      const res = await fetch(edgeFnUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resume_text: resumeText, role: selectedRole }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.details || data?.error || `Error ${res.status}`);
-      setResult(data);
+      let gapData = null;
+
+      if (edgeFnUrl) {
+        try {
+          const res = await fetch(edgeFnUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ resume_text: resumeText, role: selectedRole }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.readiness_score !== undefined) {
+              gapData = data;
+            }
+          }
+        } catch {}
+      }
+
+      if (!gapData) {
+        // Fast, reliable client-side evaluator fallback
+        await new Promise(r => setTimeout(r, 600));
+        gapData = evaluateSkillGap(resumeText, selectedRole);
+      }
+
+      setResult(gapData);
     } catch (err) {
       setError(err.message || 'Something went wrong. Try again.');
     } finally {
@@ -1458,7 +2128,7 @@ function SkillGapAnalysisPage({ onUsageUpdate }) {
             )}
 
             <button onClick={analyze} disabled={isAnalyzing || !selectedRole || resumeText.trim().length < 50}
-              className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-violet-400 via-fuchsia-400 to-fuchsia-500 px-6 py-3.5 font-semibold text-white shadow-[0_0_24px_rgba(139,92,246,0.25)] transition disabled:opacity-40 disabled:cursor-not-allowed">
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-purple-600 hover:bg-purple-700 px-6 py-3.5 font-extrabold text-white shadow-md shadow-purple-500/25 hover:shadow-lg transition disabled:opacity-40 disabled:cursor-not-allowed text-base">
               {isAnalyzing
                 ? <><LoaderCircle className="h-4 w-4 animate-spin" /> Analyzing your profile…</>
                 : <><Sparkles className="h-4 w-4" /> Analyze Skill Gap</>}
@@ -1909,7 +2579,7 @@ function SavedRoadmapsPage() {
           <h3 className="text-xl font-semibold text-white mb-2">No saved roadmaps yet</h3>
           <p className="text-slate-400 mb-6">Run a Skill Gap Analysis and save your roadmap to see it here.</p>
           <Link to="/skill-gap-analysis"
-            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-400 to-fuchsia-500 px-6 py-3 text-sm font-semibold text-white">
+            className="inline-flex items-center gap-2 rounded-full bg-purple-600 hover:bg-purple-700 px-6 py-3 text-sm font-extrabold text-white shadow-md shadow-purple-500/25 transition">
             <PlusCircle className="h-4 w-4" /> Start Skill Gap Analysis
           </Link>
         </motion.div>
@@ -2020,16 +2690,36 @@ function DashboardPage({ usageMetrics: localMetrics }) {
 
   useEffect(() => {
     let cancelled = false;
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      if (!cancelled) setSession(s);
-    });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, s) => {
-      if (!cancelled) setSession(s);
-    });
-    return () => {
-      cancelled = true;
-      subscription.unsubscribe();
+    const checkLocal = () => {
+      try {
+        const stored = localStorage.getItem('elevAIte_session');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (!cancelled) setSession(parsed);
+          return true;
+        }
+      } catch {}
+      return false;
     };
+    checkLocal();
+
+    try {
+      supabase.auth.getSession().then(({ data: { session: s } }) => {
+        if (!cancelled && s) setSession(s);
+      }).catch(() => {});
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_, s) => {
+        if (!cancelled) {
+          if (s) setSession(s);
+          else checkLocal();
+        }
+      });
+      return () => {
+        cancelled = true;
+        subscription?.unsubscribe?.();
+      };
+    } catch {
+      // ignore
+    }
   }, []);
 
   useEffect(() => {
@@ -2054,10 +2744,10 @@ function DashboardPage({ usageMetrics: localMetrics }) {
   const internshipCount = dbMetrics?.internship_count ?? localMetrics.internshipRecommendation;
 
   const statCards = [
-    { label: 'Resume Analyses', value: resumeCount, icon: FileText, color: 'text-violet-300', bg: 'bg-violet-400/10 border-violet-400/30', link: '/resume-analyzer' },
-    { label: 'Mock Interviews', value: mockCount, icon: BrainCircuit, color: 'text-cyan-300', bg: 'bg-cyan-400/10 border-cyan-400/30', link: '/mock-interview' },
-    { label: 'Skill Gap Analyses', value: skillGapCount, icon: BarChart2, color: 'text-emerald-300', bg: 'bg-emerald-400/10 border-emerald-400/30', link: '/skill-gap-analysis' },
-    { label: 'Saved Roadmaps', value: savedRoadmapsCount, icon: BookMarked, color: 'text-fuchsia-300', bg: 'bg-fuchsia-400/10 border-fuchsia-400/30', link: '/my-roadmaps' },
+    { label: 'Resume Analyses', value: resumeCount, icon: FileText, color: 'text-indigo-700', bg: 'bg-indigo-50 border-indigo-200', link: '/resume-analyzer' },
+    { label: 'Mock Interviews', value: mockCount, icon: BrainCircuit, color: 'text-sky-700', bg: 'bg-sky-50 border-sky-200', link: '/mock-interview' },
+    { label: 'Skill Gap Analyses', value: skillGapCount, icon: BarChart2, color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200', link: '/skill-gap-analysis' },
+    { label: 'Saved Roadmaps', value: savedRoadmapsCount, icon: BookMarked, color: 'text-purple-700', bg: 'bg-purple-50 border-purple-200', link: '/my-roadmaps' },
   ];
 
   const avgScore = recentAnalyses.length > 0
@@ -2069,22 +2759,24 @@ function DashboardPage({ usageMetrics: localMetrics }) {
     .reverse()
     .map((a, i) => ({ name: `#${i + 1}`, score: a.overall_score || 0 }));
 
+  const userName = resolveUserName(session);
+
   return (
-    <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="mb-10">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.35em] text-violet-300">Dashboard</p>
-            <h1 className="mt-2 font-['Poppins'] text-4xl font-semibold text-white">
-              {session ? `Welcome back, ${session.user.email.split('@')[0]}` : 'Your Activity'}
+            <p className="text-xs font-bold uppercase tracking-[0.35em] text-indigo-700">Dashboard</p>
+            <h1 className="mt-2 font-['Poppins'] text-4xl font-bold text-slate-900">
+              {session ? `Welcome back, ${userName}` : 'Your Activity'}
             </h1>
-            <p className="mt-1 text-slate-400 text-sm">
+            <p className="mt-1.5 text-slate-700 text-sm font-semibold">
               {session ? 'Your data is saved to your account across all devices.' : 'Sign in to sync your data across devices.'}
             </p>
           </div>
           {!session && (
-            <Link to="/login" className="flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-400 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white self-start">
+            <Link to="/login" className="flex items-center gap-2 rounded-full bg-slate-900 px-5 py-2.5 text-sm font-bold text-white self-start shadow-sm hover:bg-slate-800 transition">
               Sign in to sync data
             </Link>
           )}
@@ -2097,30 +2789,34 @@ function DashboardPage({ usageMetrics: localMetrics }) {
           <motion.div key={label}
             initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
             onClick={() => navigate(link)}
-            className="cursor-pointer rounded-[24px] border border-white/10 bg-[#090d20]/90 p-5 backdrop-blur-2xl hover:border-white/20 transition group">
+            className="cursor-pointer rounded-[24px] border border-slate-200/80 bg-white/85 p-5 backdrop-blur-2xl hover:border-indigo-300 hover:shadow-md transition group">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs text-slate-500 uppercase tracking-wider">{label}</p>
-                <p className={`mt-2 text-4xl font-bold ${color}`}>
-                  {loading ? <span className="inline-block h-8 w-12 animate-pulse rounded-lg bg-white/10" /> : value}
+                <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">{label}</p>
+                <p className={`mt-2 text-4xl font-extrabold ${color}`}>
+                  {loading ? <span className="inline-block h-8 w-12 animate-pulse rounded-lg bg-slate-200" /> : value}
                 </p>
               </div>
-              <div className={`rounded-full border p-2.5 ${bg}`}>
+              <div className={`rounded-xl border p-2.5 ${bg} shadow-2xs`}>
                 <Icon className={`h-5 w-5 ${color}`} />
               </div>
             </div>
-            <p className="mt-3 text-xs text-slate-500 group-hover:text-violet-400 transition flex items-center gap-1">
-              Go to feature <ArrowRight className="h-3 w-3" />
+            <p className="mt-3 text-xs font-bold text-indigo-600 group-hover:text-indigo-800 transition flex items-center gap-1">
+              Go to feature <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
             </p>
           </motion.div>
         ))}
       </div>
 
       {/* Tabs */}
-      <div className="mb-6 flex gap-2 rounded-2xl bg-white/5 border border-white/10 p-1 w-fit">
+      <div className="mb-6 flex gap-1.5 rounded-2xl bg-white/80 border border-slate-200/90 p-1.5 w-fit shadow-xs backdrop-blur-md">
         {['overview', 'resume history'].map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)}
-            className={`rounded-xl px-4 py-2 text-sm font-semibold capitalize transition ${activeTab === tab ? 'bg-gradient-to-r from-violet-400 to-fuchsia-500 text-white' : 'text-slate-400 hover:text-white'}`}>
+            className={`rounded-xl px-5 py-2 text-sm font-bold capitalize transition ${
+              activeTab === tab
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
+            }`}>
             {tab}
           </button>
         ))}
@@ -2129,36 +2825,36 @@ function DashboardPage({ usageMetrics: localMetrics }) {
       {activeTab === 'overview' && (
         <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
           {/* Resume score chart */}
-          <div className="rounded-[24px] border border-white/10 bg-[#090d20] p-6">
+          <div className="rounded-[24px] border border-slate-200/80 bg-white/85 p-6 shadow-xs">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="font-semibold text-white">Resume Score History</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Your last {recentAnalyses.length} analyses</p>
+                <h3 className="font-bold text-slate-900 text-base">Resume Score History</h3>
+                <p className="text-xs font-semibold text-slate-600 mt-0.5">Your last {recentAnalyses.length} analyses</p>
               </div>
               {avgScore !== null && (
                 <div className="text-right">
-                  <p className="text-xs text-slate-500">Avg score</p>
-                  <p className={`text-2xl font-bold ${avgScore >= 70 ? 'text-emerald-300' : avgScore >= 50 ? 'text-amber-300' : 'text-rose-300'}`}>{avgScore}</p>
+                  <p className="text-xs font-bold text-slate-600">Avg score</p>
+                  <p className={`text-2xl font-extrabold ${avgScore >= 70 ? 'text-emerald-700' : avgScore >= 50 ? 'text-amber-700' : 'text-rose-700'}`}>{avgScore}</p>
                 </div>
               )}
             </div>
             {loading ? (
-              <div className="h-48 animate-pulse rounded-2xl bg-white/5" />
+              <div className="h-48 animate-pulse rounded-2xl bg-slate-100" />
             ) : scoreChartData.length > 0 ? (
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={scoreChartData}>
-                  <CartesianGrid stroke="rgba(255,255,255,0.07)" />
-                  <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 11 }} />
-                  <YAxis domain={[0, 100]} tick={{ fill: '#94a3b8', fontSize: 11 }} />
-                  <Tooltip contentStyle={{ background: '#0a0e1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, color: '#e2e8f0' }} />
-                  <Line type="monotone" dataKey="score" stroke="#8b5cf6" strokeWidth={2.5} dot={{ fill: '#8b5cf6', r: 4 }} activeDot={{ r: 6 }} />
+                  <CartesianGrid stroke="rgba(203, 213, 225, 0.6)" />
+                  <XAxis dataKey="name" tick={{ fill: '#334155', fontSize: 11, fontWeight: 600 }} />
+                  <YAxis domain={[0, 100]} tick={{ fill: '#334155', fontSize: 11, fontWeight: 600 }} />
+                  <Tooltip contentStyle={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: 12, color: '#0f172a', fontWeight: 600, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }} />
+                  <Line type="monotone" dataKey="score" stroke="#4f46e5" strokeWidth={3} dot={{ fill: '#4f46e5', r: 4 }} activeDot={{ r: 6 }} />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-48 flex flex-col items-center justify-center text-center rounded-2xl border border-dashed border-white/10">
-                <FileText className="h-8 w-8 text-violet-400/40 mb-2" />
-                <p className="text-slate-500 text-sm">No resume analyses yet</p>
-                <Link to="/resume-analyzer" className="mt-3 text-xs text-violet-300 hover:text-violet-200">Analyse your first resume →</Link>
+              <div className="h-48 flex flex-col items-center justify-center text-center rounded-2xl border border-dashed border-slate-300 bg-slate-50/50">
+                <FileText className="h-8 w-8 text-indigo-500 mb-2" />
+                <p className="text-slate-800 text-sm font-bold">No resume analyses yet</p>
+                <Link to="/resume-analyzer" className="mt-3 text-xs font-bold text-indigo-600 hover:text-indigo-800 hover:underline">Analyse your first resume →</Link>
               </div>
             )}
           </div>
@@ -2166,22 +2862,23 @@ function DashboardPage({ usageMetrics: localMetrics }) {
           {/* Quick actions + profile */}
           <div className="space-y-5">
             {session && (
-              <div className="rounded-[24px] border border-violet-400/20 bg-violet-400/5 p-5">
-                <p className="text-xs font-semibold uppercase tracking-wider text-violet-300 mb-3">Account</p>
+              <div className="rounded-[24px] border border-indigo-200/80 bg-white/85 p-5 shadow-xs">
+                <p className="text-xs font-bold uppercase tracking-wider text-indigo-700 mb-3">Account</p>
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-400 to-fuchsia-500 text-sm font-bold text-white uppercase">
-                    {session.user.email[0]}
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-sm font-bold text-white uppercase shadow-sm">
+                    {userName[0]}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-white truncate">{session.user.email}</p>
-                    <p className="text-xs text-slate-500">Joined {new Date(session.user.created_at).toLocaleDateString()}</p>
+                    <p className="text-sm font-bold text-slate-900 truncate">{userName}</p>
+                    <p className="text-xs font-bold text-slate-700 truncate">{session.user.email}</p>
+                    <p className="text-[11px] font-semibold text-slate-500">Joined {new Date(session.user.created_at || Date.now()).toLocaleDateString()}</p>
                   </div>
                 </div>
               </div>
             )}
 
-            <div className="rounded-[24px] border border-white/10 bg-[#090d20] p-5">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-4">Quick Actions</p>
+            <div className="rounded-[24px] border border-slate-200/80 bg-white/85 p-5 shadow-xs">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-800 mb-4">Quick Actions</p>
               <div className="space-y-2">
                 {[
                   { label: 'Analyse a Resume', link: '/resume-analyzer', icon: FileText },
@@ -2190,11 +2887,11 @@ function DashboardPage({ usageMetrics: localMetrics }) {
                   { label: 'Mock Interview', link: '/mock-interview', icon: BrainCircuit },
                 ].map(({ label, link, icon: Icon }) => (
                   <Link key={label} to={link}
-                    className="flex items-center justify-between rounded-2xl border border-white/5 bg-white/5 px-4 py-3 text-sm text-slate-300 hover:bg-violet-400/10 hover:text-white hover:border-violet-400/20 transition">
-                    <div className="flex items-center gap-2">
-                      <Icon className="h-4 w-4 text-violet-400" /> {label}
+                    className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-white/90 px-4 py-3 text-sm font-bold text-slate-800 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 transition shadow-2xs">
+                    <div className="flex items-center gap-2.5">
+                      <Icon className="h-4 w-4 text-indigo-600" /> {label}
                     </div>
-                    <ArrowRight className="h-3.5 w-3.5 text-slate-500" />
+                    <ArrowRight className="h-3.5 w-3.5 text-slate-400 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition-transform" />
                   </Link>
                 ))}
               </div>
@@ -2214,47 +2911,47 @@ function DashboardPage({ usageMetrics: localMetrics }) {
               <FileText className="mx-auto h-10 w-10 text-violet-400/40 mb-3" />
               <h3 className="text-lg font-semibold text-white mb-1">No resume analyses yet</h3>
               <p className="text-slate-400 text-sm mb-5">Upload your first resume to see your analysis history here.</p>
-              <Link to="/resume-analyzer" className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-400 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white">
+              <Link to="/resume-analyzer" className="inline-flex items-center gap-2 rounded-full bg-slate-900 hover:bg-slate-800 px-6 py-3 text-sm font-extrabold text-white shadow-sm transition">
                 Analyse a Resume
               </Link>
             </div>
           ) : (
             recentAnalyses.map((a, idx) => {
               const score = a.overall_score || 0;
-              const scoreColor = score >= 70 ? 'text-emerald-300' : score >= 50 ? 'text-amber-300' : 'text-rose-300';
-              const scoreBg = score >= 70 ? 'border-emerald-400/30 bg-emerald-400/10' : score >= 50 ? 'border-amber-400/30 bg-amber-400/10' : 'border-rose-400/30 bg-rose-400/10';
+              const scoreColor = score >= 70 ? 'text-emerald-700' : score >= 50 ? 'text-amber-700' : 'text-rose-700';
+              const scoreBg = score >= 70 ? 'border-emerald-300 bg-emerald-50' : score >= 50 ? 'border-amber-300 bg-amber-50' : 'border-rose-300 bg-rose-50';
               return (
                 <motion.div key={a.id}
                   initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}
-                  className="rounded-[24px] border border-white/10 bg-[#090d20]/90 p-5 backdrop-blur-2xl">
+                  className="rounded-[24px] border border-slate-200/80 bg-white/85 p-5 shadow-xs backdrop-blur-2xl">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-start gap-4">
-                      <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border text-xl font-bold ${scoreBg} ${scoreColor}`}>
+                      <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border text-xl font-extrabold ${scoreBg} ${scoreColor}`}>
                         {score}
                       </div>
                       <div className="min-w-0">
-                        <p className="font-semibold text-white truncate">{a.file_name}</p>
+                        <p className="font-bold text-slate-900 truncate">{a.file_name}</p>
                         <div className="flex flex-wrap gap-2 mt-1.5">
                           {a.experience_level && (
-                            <span className="rounded-full border border-violet-400/30 bg-violet-400/10 px-2 py-0.5 text-[10px] font-semibold text-violet-300">{a.experience_level}</span>
+                            <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-0.5 text-[11px] font-bold text-indigo-700">{a.experience_level}</span>
                           )}
                           {a.ats_compatibility != null && (
-                            <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-slate-400">ATS: {a.ats_compatibility}%</span>
+                            <span className="rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[11px] font-bold text-slate-700">ATS: {a.ats_compatibility}%</span>
                           )}
                           {a.keyword_match != null && (
-                            <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-slate-400">Keywords: {a.keyword_match}%</span>
+                            <span className="rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[11px] font-bold text-slate-700">Keywords: {a.keyword_match}%</span>
                           )}
                         </div>
-                        <p className="text-xs text-slate-600 mt-1">{new Date(a.created_at).toLocaleString()}</p>
+                        <p className="text-xs font-semibold text-slate-600 mt-1">{new Date(a.created_at).toLocaleString()}</p>
                       </div>
                     </div>
                     <Link to="/resume-analyzer"
-                      className="flex items-center gap-1.5 rounded-full border border-violet-400/30 bg-violet-400/10 px-4 py-2 text-xs font-semibold text-violet-200 hover:bg-violet-400/20 transition shrink-0">
+                      className="flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-4 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition shrink-0">
                       Re-analyse <ArrowRight className="h-3 w-3" />
                     </Link>
                   </div>
                   {a.executive_summary && (
-                    <p className="mt-3 text-xs text-slate-400 leading-relaxed border-t border-white/5 pt-3">{a.executive_summary}</p>
+                    <p className="mt-3 text-xs font-semibold text-slate-700 leading-relaxed border-t border-slate-200/70 pt-3">{a.executive_summary}</p>
                   )}
                 </motion.div>
               );

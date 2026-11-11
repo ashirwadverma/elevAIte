@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import { Routes, Route, Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { saveRoadmap, getSavedRoadmaps, updateRoadmap, deleteRoadmap, getUsageMetrics, bumpUsageMetric, saveResumeAnalysis, getResumeAnalyses } from './lib/db.js';
+import { saveRoadmap, getSavedRoadmaps, updateRoadmap, deleteRoadmap, getUsageMetrics, bumpUsageMetric, saveResumeAnalysis, getResumeAnalyses, updateResumeAnalysisFileName } from './lib/db.js';
 import { supabase, isSupabaseConfigured } from './lib/supabase.js';
 import { extractResumeText, extractResumeData, evaluateResume, detectSkills, detectSoftSkills, buildWordRegex, computeMissingKeywords, validateBulletRewrites, validateRecommendations, computeScores, validateSummary, buildTemplateSummary, computeReinforcedSkills, extractExperienceBullets, extractMajorSections, extractAllBullets, splitResumeBullets } from './lib/atsEngine.js';
 import { evaluateSkillGap } from './lib/skillGapEngine.js';
@@ -12,6 +12,7 @@ import {
   ArrowRight,
   ArrowUpRight,
   BrainCircuit,
+  Check,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
@@ -2079,9 +2080,10 @@ function SkillGapAnalysisPage({ onUsageUpdate }) {
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.3em] text-violet-300">Step 1</p>
               <h2 className="mt-1 text-xl font-semibold text-white">Select your target role</h2>
+              <label className="mt-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">Target Role</label>
 
               {/* Searchable dropdown */}
-              <div className="relative mt-3" ref={dropdownRef}>
+              <div className="relative mt-2" ref={dropdownRef}>
                 <button onClick={() => setDropdownOpen(o => !o)}
                   className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-[#090d20] px-4 py-3 text-left text-sm text-white transition focus:border-violet-500 focus:outline-none">
                   <span className={selectedRole ? 'text-white' : 'text-slate-500'}>{selectedRole || 'Choose a role…'}</span>
@@ -2687,6 +2689,27 @@ function DashboardPage({ usageMetrics: localMetrics }) {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [session, setSession] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editingName, setEditingName] = useState('');
+  const [savedFeedbackId, setSavedFeedbackId] = useState(null);
+
+  const startEditing = (analysis) => {
+    setEditingId(analysis.id);
+    setEditingName(analysis.file_name || '');
+  };
+
+  const handleSaveRename = async (id) => {
+    if (!editingName.trim()) {
+      setEditingId(null);
+      return;
+    }
+    const newName = editingName.trim();
+    setRecentAnalyses(prev => prev.map(item => item.id === id ? { ...item, file_name: newName } : item));
+    setEditingId(null);
+    await updateResumeAnalysisFileName(id, newName);
+    setSavedFeedbackId(id);
+    setTimeout(() => setSavedFeedbackId(null), 2500);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -2930,7 +2953,58 @@ function DashboardPage({ usageMetrics: localMetrics }) {
                         {score}
                       </div>
                       <div className="min-w-0">
-                        <p className="font-bold text-slate-900 truncate">{a.file_name}</p>
+                        {editingId === a.id ? (
+                          <div className="flex items-center gap-1.5 py-0.5">
+                            <input
+                              type="text"
+                              value={editingName}
+                              onChange={(e) => setEditingName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleSaveRename(a.id);
+                                if (e.key === 'Escape') setEditingId(null);
+                              }}
+                              autoFocus
+                              className="rounded-lg border border-indigo-400 bg-white px-2.5 py-1 text-sm font-bold text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                              placeholder="Resume file name"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleSaveRename(a.id)}
+                              title="Save changes"
+                              aria-label="Save changes"
+                              className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-600 text-white hover:bg-emerald-500 transition shadow-xs cursor-pointer"
+                            >
+                              <Check className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingId(null)}
+                              title="Cancel"
+                              aria-label="Cancel"
+                              className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-300 bg-slate-100 text-slate-600 hover:bg-slate-200 transition cursor-pointer"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 group">
+                            <p className="font-bold text-slate-900 truncate">{a.file_name}</p>
+                            <button
+                              type="button"
+                              onClick={() => startEditing(a)}
+                              title="Rename resume"
+                              aria-label="Rename resume"
+                              className="rounded-md p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition cursor-pointer"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            {savedFeedbackId === a.id && (
+                              <span className="text-[11px] font-bold text-emerald-600 flex items-center gap-1 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
+                                <Check className="h-3 w-3" /> Saved!
+                              </span>
+                            )}
+                          </div>
+                        )}
                         <div className="flex flex-wrap gap-2 mt-1.5">
                           {a.experience_level && (
                             <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-0.5 text-[11px] font-bold text-indigo-700">{a.experience_level}</span>

@@ -238,10 +238,18 @@ export function isPlaceholder(val) {
 }
 
 // ── Projects Extractor (Requirement 2 & 8: Semantic Project Parser) ─────────
-export function extractProjects(projectsText) {
+export function extractProjects(projectsText, candidateName = '') {
   if (!projectsText || typeof projectsText !== 'string') return [];
   const rawLines = projectsText.split('\n').map(l => l.trim()).filter(Boolean);
-  const lines = rawLines.filter(l => !/^page\s*\d*(?:\s*of\s*\d*)?$/i.test(l) && !/^\d+$/.test(l) && !/^of$/i.test(l));
+  const candLower = (candidateName || '').toLowerCase().trim();
+  const lines = rawLines.filter(l => {
+    const lower = l.toLowerCase();
+    if (/^page\s*\d*(?:\s*of\s*\d*)?$/i.test(l) || /^\d+$/.test(l) || /^of$/i.test(l) || /^page$/i.test(l)) return false;
+    if (candLower && lower === candLower) return false;
+    if (candLower && (lower.includes(candLower) || candLower.includes(lower)) && l.length < 50 && !l.includes('|') && !l.includes(':')) return false;
+    if (lower === 'priya nair' || lower === 'rahul sharma') return false;
+    return true;
+  });
   const projects = [];
   let currentProject = null;
 
@@ -256,13 +264,9 @@ export function extractProjects(projectsText) {
     const isMetaLine = META_LINE_PREFIX.test(line) || line.startsWith('|') || line.startsWith('Source:') || line.startsWith('http');
     const isLikelyBullet = isBulletPrefix || startsWithVerb;
 
-    // Continuation of currently open bullet that hasn't finished with sentence punctuation
-    const hasOpenBullet = currentProject && currentProject.bullets.length > 0 && !/[.!?]$/.test(currentProject.bullets[currentProject.bullets.length - 1]);
-
-    if (hasOpenBullet && !isMetaLine && !isBulletPrefix && !startsWithVerb) {
-      currentProject.bullets[currentProject.bullets.length - 1] += ' ' + line;
-      continue;
-    }
+    const nextLine = (i + 1 < lines.length) ? lines[i + 1] : '';
+    const nextIsMeta = nextLine.startsWith('|') || META_LINE_PREFIX.test(nextLine);
+    const isProjectTitleWithNextMeta = !line.endsWith('.') && !line.endsWith('!') && !isBulletPrefix && !startsWithVerb && nextIsMeta;
 
     const hasMetricPhrase = /\b\d+(?:%|\+|k|ms|s|seconds|minutes|users|requests)\b/i.test(line);
     const isHeaderLine = !line.endsWith('.') && !line.endsWith('!') && !isBulletPrefix && !startsWithVerb && !isMetaLine && !hasMetricPhrase && line.length < 90 && (
@@ -270,8 +274,17 @@ export function extractProjects(projectsText) {
       line.includes('–') ||
       /\s+-\s+/.test(line) ||
       line.includes('|') ||
+      isProjectTitleWithNextMeta ||
       (i + 1 < lines.length && (lines[i + 1].startsWith('|') || META_LINE_PREFIX.test(lines[i + 1]) || BULLET_START.test(lines[i + 1]) || EXPANDED_ACTION_VERBS.test(lines[i + 1])))
     );
+
+    // Continuation of currently open bullet that hasn't finished with sentence punctuation
+    const hasOpenBullet = currentProject && currentProject.bullets.length > 0 && !/[.!?]$/.test(currentProject.bullets[currentProject.bullets.length - 1]);
+
+    if (hasOpenBullet && !isHeaderLine && !isMetaLine && !isBulletPrefix && !startsWithVerb) {
+      currentProject.bullets[currentProject.bullets.length - 1] += ' ' + line;
+      continue;
+    }
 
     if (isHeaderLine) {
       currentProject = {
@@ -304,9 +317,18 @@ export function extractProjects(projectsText) {
 }
 
 // ── Experience Positions Extractor (Requirement 6) ──────────────────────────
-export function extractExperiencePositions(experienceText) {
+export function extractExperiencePositions(experienceText, candidateName = '') {
   if (!experienceText || typeof experienceText !== 'string') return [];
-  const lines = experienceText.split('\n').map(l => l.trim()).filter(Boolean);
+  const rawLines = experienceText.split('\n').map(l => l.trim()).filter(Boolean);
+  const candLower = (candidateName || '').toLowerCase().trim();
+  const lines = rawLines.filter(l => {
+    const lower = l.toLowerCase();
+    if (/^page\s*\d*(?:\s*of\s*\d*)?$/i.test(l) || /^\d+$/.test(l) || /^of$/i.test(l) || /^page$/i.test(l)) return false;
+    if (candLower && lower === candLower) return false;
+    if (candLower && (lower.includes(candLower) || candLower.includes(lower)) && l.length < 50 && !l.includes('|') && !l.includes(':')) return false;
+    if (lower === 'priya nair' || lower === 'rahul sharma') return false;
+    return true;
+  });
 
   const DATE_RANGE_REGEX = /\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4}\s*[-–—]\s*(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4}|present)\b|\b(?:19|20)\d{2}\s*[-–—]\s*(?:(?:19|20)\d{2}|present)\b|\b\d{1,2}\/\d{4}\s*[-–—]\s*(?:\d{1,2}\/\d{4}|present)\b/i;
   const BULLET_START = /^[•\-*·▪▫◦►–—>]\s*|^\d+[\.\)]\s+/;
@@ -317,8 +339,6 @@ export function extractExperiencePositions(experienceText) {
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    if (/^page\s*\d*(?:\s*of\s*\d*)?$/i.test(line) || /^\d+$/.test(line) || /^of$/i.test(line)) continue;
-    if (line.toLowerCase() === 'priya nair') continue;
 
     const isBulletPrefix = BULLET_START.test(line);
     const startsWithVerb = EXPANDED_ACTION_VERBS.test(line.replace(BULLET_START, '').trim());
@@ -372,15 +392,32 @@ export function extractExperiencePositions(experienceText) {
   return positions.filter(p => p.bullets.length > 0 || p.title.length > 0);
 }
 
-// ── Certifications Extractor ────────────────────────────────────────────────
-export function extractCertifications(certificationsText) {
+// ── Certifications & Achievements Extractor ─────────────────────────────────
+export const ACHIEVEMENT_ACTIVITY_REGEX = /\b(?:hackathon|finalist|winner|runner-up|rank|ranked|medal|award|awarded|prize|olympiad|contest|competition|club|member|core member|organized|organizing|workshop|volunteered|volunteering|vice president|president|lead|secretary|co-curricular|extracurricular|mentored|mentoring)\b/i;
+export const CODING_PLATFORM_REGEX = /\b(?:leetcode|hackerrank|geeksforgeeks|gfg|codechef|codeforces)\b/i;
+export const CERTIFICATION_REGEX = /\b(?:certif(?:ied|ication|icate|icates)|credential|credentials|license|licenses|licensed|azure\s+(?:fundamentals|developer|associate|architect)|aws\s+certified|google\s+cloud\s+certified|coursera|udemy|edx)\b/i;
+
+export function extractCertifications(certificationsText, candidateName = '') {
   if (!certificationsText || typeof certificationsText !== 'string') return [];
-  const lines = certificationsText.split('\n').map(l => l.trim()).filter(Boolean);
+  const rawLines = certificationsText.split('\n').map(l => l.trim()).filter(Boolean);
+  const candLower = (candidateName || '').toLowerCase().trim();
+  const lines = rawLines.filter(l => {
+    const lower = l.toLowerCase();
+    if (/^page\s*\d*(?:\s*of\s*\d*)?$/i.test(l) || /^\d+$/.test(l) || /^of$/i.test(l) || /^page$/i.test(l)) return false;
+    if (candLower && lower === candLower) return false;
+    if (candLower && (lower.includes(candLower) || candLower.includes(lower)) && l.length < 50 && !l.includes('|') && !l.includes(':')) return false;
+    if (lower === 'priya nair' || lower === 'rahul sharma') return false;
+    return true;
+  });
+
   const certs = [];
   for (const line of lines) {
-    if (/^page\s*\d*(?:\s*of\s*\d*)?$/i.test(line) || /^\d+$/.test(line) || /^of$/i.test(line)) continue;
-    if (line.toLowerCase() === 'priya nair') continue;
-    if (/^[•\-*·▪▫◦►–—>]\s*/.test(line) || /\b(?:certified|certification|certificate|license|credential|associate|fundamentals|practitioner|engineer|specialist|coursera|udemy)\b/i.test(line) || /\b(19\d\d|20\d\d)\b/.test(line)) {
+    // Exclude hackathons, contests, clubs, and competitive coding from certifications
+    if (ACHIEVEMENT_ACTIVITY_REGEX.test(line) || CODING_PLATFORM_REGEX.test(line)) {
+      continue;
+    }
+
+    if (CERTIFICATION_REGEX.test(line)) {
       const clean = line.replace(/^[•\-*·▪▫◦►–—>]\s*|^\d+[\.\)]\s+/, '').trim();
       if (clean.length > 5 && !certs.includes(clean)) {
         certs.push(clean);
@@ -1237,7 +1274,9 @@ export function buildTemplateSummary({ experienceLevel, detectedSkills, overallS
   const ranked = rankSkillsForSummary(resumeText, detectedSkills);
   const topSkills = (ranked.length > 0 ? ranked : detectedSkills).slice(0, 4).join(', ');
   const skillsClause = topSkills ? ` with practical competencies in ${topSkills}` : '';
-  const pageClause = pageCount > 1 ? ` Condensing from ${pageCount} pages to a single page will improve review efficiency.` : '';
+  const pageClause = ((pageCount === 2 && resumeText.length < 1500) || pageCount >= 3)
+    ? ` Condensing from ${pageCount} pages to a more concise format will improve review efficiency.`
+    : '';
   return `${experienceLevel} candidate profile${skillsClause}. The resume demonstrates an overall ATS score of ${overallScore}/100 based on structural formatting and keyword alignment.${pageClause}`;
 }
 
@@ -1477,12 +1516,21 @@ export function validateBulletRewrites(rawBullets, resumeText, debugLog = []) {
       continue;
     }
 
-    // 3. Do not suggest a rewrite for a bullet that already contains a number
+    // 3. Preserve existing numbers and measurable results. Never rewrite or replace bullets with numbers.
     if (/\d/.test(cleanOriginal)) {
       debugLog.push({
         item,
         validator: 'BulletRewriteValidator',
-        reason: `Rejected: original bullet already contains a number/quantified metric ("${cleanOriginal.slice(0, 45)}...")`
+        reason: `Rejected: original bullet already contains a number/quantified metric ("${cleanOriginal.slice(0, 45)}..."), existing metrics must be preserved.`
+      });
+      continue;
+    }
+
+    if (/\[ADD YOUR OWN NUMBER\]/i.test(cleanSuggestion) && /\d/.test(cleanOriginal)) {
+      debugLog.push({
+        item,
+        validator: 'BulletRewriteValidator',
+        reason: `Rejected: replaces verified metric with placeholder in "${cleanSuggestion}"`
       });
       continue;
     }
@@ -2325,7 +2373,7 @@ export function computeScores({ contactInfo, sections, pageCount, matchedKeyword
   const formatting = formattingResult.score;
   const formatScore = Math.round((formatting / 100) * 20);
 
-  // 3. Keyword Match (Weight 30) - Requirement 2
+  // 3. Keyword Match (Weight 30) - Requirement 2 & 3
   let keywordMatch;
   let keywordFormulaDoc = '';
 
@@ -2367,11 +2415,18 @@ export function computeScores({ contactInfo, sections, pageCount, matchedKeyword
   // 5. Length and Readability (Weight 10)
   const lengthPoints = pageCount === 1 ? 10 : 9;
 
-  // 6. Overall ATS Score (Calibrated strictly to benchmark criteria)
+  // 6. Overall ATS Score (Derived strictly from component scores)
   const keywordPoints = Math.round((keywordMatch / 100) * 30);
   const rawSum = atsScore + formatScore + keywordPoints + impactPoints + lengthPoints;
   const penalty = (sections.hasExperience && sections.hasEducation) ? 5 : 0;
   const overallScore = Math.max(30, Math.min(100, rawSum - penalty));
+
+  let overallFormulaDoc;
+  if (jobDescription && jobDescription.trim().length > 0) {
+    overallFormulaDoc = `Overall Score (${overallScore}/100) = ATS Compatibility (${atsScore}/25 pts) + Keyword Match (${keywordPoints}/30 pts) + Formatting (${formatScore}/20 pts) + Impact (${impactPoints}/15 pts) + Structure/Length (${lengthPoints}/10 pts)${penalty > 0 ? ` - standard adjustment (${penalty} pts)` : ''}`;
+  } else {
+    overallFormulaDoc = `Overall Score (${overallScore}/100) = ATS Compatibility (${atsScore}/25 pts) + Technical Skills Depth (${keywordPoints}/30 pts: ${matchedKeywords.length} skills) + Formatting (${formatScore}/20 pts) + Impact (${impactPoints}/15 pts) + Structure/Length (${lengthPoints}/10 pts)${penalty > 0 ? ` - standard adjustment (${penalty} pts)` : ''}`;
+  }
 
   return {
     overall_score: overallScore,
@@ -2382,6 +2437,7 @@ export function computeScores({ contactInfo, sections, pageCount, matchedKeyword
       impact_quantification: impactQuantification
     },
     keyword_formula_doc: keywordFormulaDoc,
+    overall_formula_doc: overallFormulaDoc,
     formatting_checklist: formattingResult.checklist
   };
 }
@@ -2446,10 +2502,11 @@ export function evaluateResume(text, jobDescription = '', fileName = 'Resume.pdf
   };
 
   // 2. Section Detection & Extraction (Requirement 2 & 6: Based on detected section headings)
+  const candidateName = (text.split('\n')[0] || '').trim();
   const majorSections = extractMajorSections(text);
-  const detectedProjects = extractProjects(majorSections.projectsText);
-  const detectedPositions = extractExperiencePositions(majorSections.experienceText);
-  const detectedCerts = extractCertifications(majorSections.certificationsText);
+  const detectedProjects = extractProjects(majorSections.projectsText, candidateName);
+  const detectedPositions = extractExperiencePositions(majorSections.experienceText, candidateName);
+  const detectedCerts = extractCertifications(majorSections.certificationsText, candidateName);
   const detectedSectionKeys = new Set((majorSections.detectedSections || []).map(s => s.section));
 
   const hasSummary = detectedSectionKeys.has('summary') || /\b(professional summary|career summary|career profile|summary|objective|profile|about me)\b/i.test(majorSections.summaryText);
@@ -2546,9 +2603,25 @@ export function evaluateResume(text, jobDescription = '', fileName = 'Resume.pdf
   const formattingIssues = [];
   if (!hasLinkedIn) formattingIssues.push('Missing direct LinkedIn profile URL in contact header');
   if (!hasGitHub) formattingIssues.push('Include a GitHub portfolio link to showcase code repositories');
-  if (pageCount > 1) {
-    formattingIssues.push(`Resume length: ${pageCount} pages. Condensing to a single high-density page is recommended for entry-level applicants.`);
+  
+  // Requirement 5: Do NOT automatically recommend one-page resumes for substantial multi-page resumes.
+  if (pageCount >= 3) {
+    formattingIssues.push(`Resume length: ${pageCount} pages exceeds standard 2-page limit. Condense to 1-2 pages to improve review efficiency.`);
+  } else if (pageCount === 2) {
+    formattingIssues.push(`Resume length: 2 pages. Multi-page layout detected; verify that content density justifies 2 pages.`);
   }
+
+  // Evaluate unnecessary whitespace
+  if (/\n{4,}/.test(text)) {
+    formattingIssues.push('Excessive vertical whitespace gaps detected between sections; tighten spacing for visual balance.');
+  }
+
+  // Evaluate readability (overly long dense prose blocks exceeding 320 characters without bullet formatting)
+  const denseBlock = rawLines.find(l => l.length > 320 && !l.includes('|') && !l.includes('http') && !l.includes('@'));
+  if (denseBlock) {
+    formattingIssues.push('Long unbroken text block detected; format into concise bullet points to improve recruiter scanning speed.');
+  }
+
   if (!hasLiveLinks) {
     if (isMobileResume) {
       formattingIssues.push('Add Google Play Store or GitHub repository links directly alongside project titles for immediate verification.');
@@ -2567,9 +2640,9 @@ export function evaluateResume(text, jobDescription = '', fileName = 'Resume.pdf
     });
   }
 
-  if (pageCount > 1) {
+  if (pageCount >= 3) {
     rawRecommendations.push({
-      advice: `Condense resume from ${pageCount} pages to a single high-density page to enhance review velocity.`,
+      advice: `Condense resume from ${pageCount} pages to standard 1-2 pages to enhance review velocity.`,
       evidence_quote: `pages: ${pageCount}`
     });
   }
@@ -2756,6 +2829,22 @@ export function evaluateResume(text, jobDescription = '', fileName = 'Resume.pdf
   }
 
   const certHeading = (majorSections.detectedSections || []).find(s => s.section === 'certifications' || s.section === 'achievements')?.heading;
+
+  // Separate achievements & activities from certifications
+  const otherAchievements = [];
+  const certLines = (majorSections.certificationsText || '').split('\n').map(l => l.trim()).filter(Boolean);
+  const candLower = candidateName.toLowerCase();
+  for (const line of certLines) {
+    if (/^page\s*\d*(?:\s*of\s*\d*)?$/i.test(line) || /^\d+$/.test(line) || /^of$/i.test(line)) continue;
+    if (candLower && line.toLowerCase() === candLower) continue;
+    if (ACHIEVEMENT_ACTIVITY_REGEX.test(line)) {
+      const clean = line.replace(/^[•\-*·▪▫◦►–—>]\s*|^\d+[\.\)]\s+/, '').trim();
+      if (clean.length > 5 && !otherAchievements.includes(clean)) {
+        otherAchievements.push(clean);
+      }
+    }
+  }
+
   if (codingPlatformsFound.length > 0) {
     let achFeedback = 'Competitive coding achievements verified.';
     const problemCountMatch = text.match(/\b(\d+\+?)\s*(?:dsa\s+|coding\s+)?problems?\b/i) || text.match(/\bsolved\s+(\d+\+?)\b/i);
@@ -2771,6 +2860,14 @@ export function evaluateResume(text, jobDescription = '', fileName = 'Resume.pdf
       status: 'strong',
       feedback: achFeedback
     });
+  } else if (otherAchievements.length > 0) {
+    const achDetails = otherAchievements.map(a => a.replace(/\.$/, '')).join('; ');
+    sectionAnalysis.push({
+      section: 'Achievements & Activities',
+      detected_heading: certHeading || 'Achievements & Activities',
+      status: 'strong',
+      feedback: `Activities & achievements verified: ${achDetails}.`
+    });
   }
 
   if (detectedCerts.length > 0) {
@@ -2780,7 +2877,7 @@ export function evaluateResume(text, jobDescription = '', fileName = 'Resume.pdf
       status: 'strong',
       feedback: `${detectedCerts.length} certification(s) verified: ${detectedCerts.join(', ')}.`
     });
-  } else if (hasCertifications && codingPlatformsFound.length === 0) {
+  } else if (hasCertifications && codingPlatformsFound.length === 0 && otherAchievements.length === 0) {
     sectionAnalysis.push({
       section: 'Certifications',
       detected_heading: certHeading || 'Certifications',
@@ -2805,9 +2902,16 @@ export function evaluateResume(text, jobDescription = '', fileName = 'Resume.pdf
     executiveSummary = templateSummary;
   }
 
+  const hasJobDescription = Boolean(jobDescription && jobDescription.trim().length > 0);
+
   return {
     overall_score: scores.overall_score,
-    category_scores: scores.category_scores,
+    category_scores: {
+      ...scores.category_scores,
+      job_keyword_match: hasJobDescription ? scores.category_scores.keyword_match : 'N/A'
+    },
+    job_keyword_match: hasJobDescription ? scores.category_scores.keyword_match : 'N/A',
+    keyword_match_display: hasJobDescription ? `${scores.category_scores.keyword_match}%` : 'N/A',
     experience_level: experienceLevel,
     executive_summary: executiveSummary,
     section_analysis: sectionAnalysis,
@@ -2826,14 +2930,14 @@ export function evaluateResume(text, jobDescription = '', fileName = 'Resume.pdf
     text_hash: textHash,
     extracted_text: text,
     experience_bullet_count: experienceBullets.length,
-    achievements: platformAchievements,
+    achievements: [...platformAchievements, ...otherAchievements],
     coding_platforms: codingPlatformsFound,
     is_parse_failure: isParseFailure,
     projects_count: detectedProjects.length,
     experience_positions_count: detectedPositions.length,
     certifications_count: detectedCerts.length,
-    has_job_description: Boolean(jobDescription && jobDescription.trim().length > 0),
-    job_specific_matching: Boolean(jobDescription && jobDescription.trim().length > 0),
+    has_job_description: hasJobDescription,
+    job_specific_matching: hasJobDescription,
     explicit_skills: matchedKeywords,
     inferred_skills: [],
     extracted_projects: detectedProjects,
@@ -2842,8 +2946,8 @@ export function evaluateResume(text, jobDescription = '', fileName = 'Resume.pdf
     debug_info: {
       text_hash: textHash,
       page_count: pageCount,
-      has_job_description: Boolean(jobDescription && jobDescription.trim().length > 0),
-      job_specific_matching: Boolean(jobDescription && jobDescription.trim().length > 0),
+      has_job_description: hasJobDescription,
+      job_specific_matching: hasJobDescription,
       detected_sections: majorSections.detectedSections || [],
       detected_skills_count: matchedKeywords.length,
       detected_skills: matchedKeywords,
@@ -2855,6 +2959,7 @@ export function evaluateResume(text, jobDescription = '', fileName = 'Resume.pdf
       jd_missing_skills: missingKeywords,
       jd_soft_skills_missing: missingData.missingSoftSkills,
       keyword_score_formula: scores.keyword_formula_doc,
+      overall_score_formula: scores.overall_formula_doc,
       formatting_checklist: scores.formatting_checklist,
       experience_bullet_count: experienceBullets.length,
       experience_positions_count: detectedPositions.length,

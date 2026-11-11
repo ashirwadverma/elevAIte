@@ -197,6 +197,32 @@ export async function getResumeAnalyses(limit = 10) {
   return localList.slice(0, limit);
 }
 
+export async function updateResumeAnalysisFileName(id, newFileName) {
+  if (!id || !newFileName || !newFileName.trim()) return false;
+  const cleanName = newFileName.trim();
+
+  // 1. Update in localStorage
+  try {
+    const existing = JSON.parse(localStorage.getItem(RESUME_STORAGE_KEY) || '[]');
+    const updated = existing.map(item => {
+      if (item.id === id || String(item.id) === String(id)) {
+        return { ...item, file_name: cleanName };
+      }
+      return item;
+    });
+    localStorage.setItem(RESUME_STORAGE_KEY, JSON.stringify(updated));
+  } catch {}
+
+  // 2. Update in Supabase if configured
+  if (isSupabaseConfigured) {
+    try {
+      await supabase.from('resume_analyses').update({ file_name: cleanName }).eq('id', id);
+    } catch {}
+  }
+
+  return true;
+}
+
 // ── Saved Roadmaps ────────────────────────────────────────────────────────
 
 export async function getSavedRoadmaps() {

@@ -1550,6 +1550,97 @@ test('35. Priya Nair.pdf real reference evaluation: all 7 requirements verified'
   assert.strictEqual(evalResult.job_specific_matching, false, 'job_specific_matching must be false');
 });
 
+test('36. Rahul Sharma.resume.pdf accuracy: 3 projects, 1 cert, achievements separate, N/A keyword match', async () => {
+  const pdfPath = fs.existsSync('Rahul Sharma.resume.pdf')
+    ? 'Rahul Sharma.resume.pdf'
+    : 'C:/Users/Ashirwad Verma/.gemini/antigravity/brain/5cacf15d-dd3e-472e-a59f-1ce6ddf4d718/.user_uploaded/media_1794212022808_03a86142.pdf';
+
+  if (!fs.existsSync(pdfPath)) return;
+
+  const buf = fs.readFileSync(pdfPath);
+  const file = {
+    name: 'Rahul Sharma.resume.pdf',
+    type: 'application/pdf',
+    arrayBuffer: async () => buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength)
+  };
+
+  const { text, pageCount } = await extractResumeData(file);
+  assert.strictEqual(pageCount, 2, 'Measured page count must be 2');
+  assert.ok(text.includes('Rahul Sharma'), 'Extracted text must include candidate name');
+
+  // Evaluate without Job Description
+  const evalResult = evaluateResume(text, '', file.name, pageCount);
+
+  // 1. Projects = Exactly 3 (not 2, page-break across Page 1 & 2 handled)
+  assert.strictEqual(evalResult.projects_count, 3, 'Must detect exactly 3 projects');
+  const projectTitles = evalResult.extracted_projects.map(p => p.title);
+  assert.ok(projectTitles.some(t => t.includes('Personal Portfolio Website')), 'Must detect Personal Portfolio Website');
+  assert.ok(projectTitles.some(t => t.includes('Task Management Web App')), 'Must detect Task Management Web App');
+  assert.ok(projectTitles.some(t => t.includes('Resume Analyzer Tool')), 'Must detect Resume Analyzer Tool');
+
+  // 2. Certifications = Exactly 1 (Hackathon and Coding Club classified as achievements/activities)
+  assert.strictEqual(evalResult.certifications_count, 1, 'Must detect exactly 1 certification');
+  assert.ok(evalResult.extracted_certifications[0].includes('Coursera'), 'Certification must be Full Stack Web Development from Coursera');
+  assert.ok(!evalResult.extracted_certifications[0].includes('Hackathon'), 'Hackathon must NOT be in certifications');
+  assert.ok(!evalResult.extracted_certifications[0].includes('coding club'), 'Coding club must NOT be in certifications');
+
+  // 3. Achievements & Activities classified separately
+  assert.ok(evalResult.achievements.some(a => a.includes('Smart India Hackathon')), 'Hackathon must be in achievements');
+  assert.ok(evalResult.achievements.some(a => a.includes('coding club')), 'Coding club must be in achievements');
+  assert.ok(evalResult.achievements.some(a => a.includes('LeetCode')), 'LeetCode must be in achievements');
+
+  // 4. Experience: 1 position, 3 bullets
+  assert.strictEqual(evalResult.experience_positions_count, 1, 'Must detect 1 experience position');
+  assert.strictEqual(evalResult.experience_bullet_count, 3, 'Must detect exactly 3 experience bullet points');
+
+  // 5. Sections: Professional Summary and Education detected
+  const sumCard = evalResult.section_analysis.find(s => s.section === 'Professional Summary');
+  assert.ok(sumCard, 'Summary card must be present');
+  assert.strictEqual(sumCard.status, 'present', 'Summary status must be present');
+
+  const eduCard = evalResult.section_analysis.find(s => s.section === 'Education & Degree');
+  assert.ok(eduCard, 'Education card must be present');
+  assert.strictEqual(eduCard.status, 'present', 'Education status must be present');
+
+  // 6. Job keyword matching when no JD is uploaded
+  assert.strictEqual(evalResult.has_job_description, false, 'has_job_description must be false');
+  assert.strictEqual(evalResult.job_keyword_match, 'N/A', 'job_keyword_match must be N/A');
+  assert.strictEqual(evalResult.keyword_match_display, 'N/A', 'keyword_match_display must be N/A');
+  assert.strictEqual(evalResult.missing_keywords.length, 0, 'No missing keywords invented when no JD');
+  assert.strictEqual(evalResult.missing_keywords_message, 'Add a job description to see missing keywords');
+
+  // 7. Technical skills extracted separately
+  assert.ok(evalResult.matched_keywords.length >= 25, 'Extracted technical skills should be 25+');
+  assert.ok(evalResult.matched_keywords.includes('React'), 'React must be detected');
+  assert.ok(evalResult.matched_keywords.includes('Node.js'), 'Node.js must be detected');
+  assert.ok(evalResult.matched_keywords.includes('Python'), 'Python must be detected');
+
+  // 8. Bullet Rewriting: verified metrics are preserved
+  for (const b of evalResult.weak_bullets) {
+    assert.ok(!/\d/.test(b.original), 'Original bullet must not contain digits');
+  }
+
+  // 9. Formatting: does not automatically recommend 1-page resume
+  assert.strictEqual(
+    evalResult.suggestions.some(s => s.advice.toLowerCase().includes('condense resume from 2 pages to a single')),
+    false,
+    'Must not automatically recommend 1 page for this 2-page resume'
+  );
+
+  // 10. Evaluate WITH a Job Description
+  const targetJd = `Looking for a Software Engineer proficient in React, Node.js, Python, Docker, Kubernetes, and AWS.`;
+  const jdResult = evaluateResume(text, targetJd, file.name, pageCount);
+  assert.strictEqual(jdResult.has_job_description, true);
+  assert.strictEqual(typeof jdResult.job_keyword_match, 'number');
+  assert.ok(jdResult.jd_matched_keywords.includes('React'));
+  assert.ok(jdResult.jd_matched_keywords.includes('Node.js'));
+  assert.ok(jdResult.jd_matched_keywords.includes('Python'));
+  assert.ok(jdResult.missing_keywords.includes('Docker'));
+  assert.ok(jdResult.missing_keywords.includes('Kubernetes'));
+  assert.ok(jdResult.missing_keywords.includes('AWS'));
+});
+
+
 
 
 

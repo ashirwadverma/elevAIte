@@ -1,12 +1,13 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import { Routes, Route, Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { saveRoadmap, getSavedRoadmaps, updateRoadmap, deleteRoadmap, getUsageMetrics, bumpUsageMetric, saveResumeAnalysis, getResumeAnalyses, updateResumeAnalysisFileName } from './lib/db.js';
+import { saveRoadmap, getSavedRoadmaps, updateRoadmap, deleteRoadmap, getUsageMetrics, bumpUsageMetric, saveResumeAnalysis, getResumeAnalyses, updateResumeAnalysisFileName, getMockInterviewStats } from './lib/db.js';
 import { supabase, isSupabaseConfigured } from './lib/supabase.js';
 import { extractResumeText, extractResumeData, evaluateResume, detectSkills, detectSoftSkills, buildWordRegex, computeMissingKeywords, validateBulletRewrites, validateRecommendations, computeScores, validateSummary, buildTemplateSummary, computeReinforcedSkills, extractExperienceBullets, extractMajorSections, extractAllBullets, splitResumeBullets } from './lib/atsEngine.js';
 import { evaluateSkillGap } from './lib/skillGapEngine.js';
 import SerkoLandingPage from './components/SerkoLandingPage.jsx';
 import SerkoAuthPage from './components/SerkoAuthPage.jsx';
+import MockInterviewPage from './components/MockInterviewPage.jsx';
 import {
   AlertCircle,
   ArrowRight,
@@ -61,9 +62,9 @@ const features = [
     points: ['ATS Score', 'Keyword Match', 'Formatting', 'Missing Skills', 'Suggestions']
   },
   {
-    title: 'AI Mock Interview',
-    subtitle: 'Practice technical, HR, and behavioral rounds.',
-    points: ['Technical', 'HR', 'Behavioral', 'System Design', 'Coding']
+    title: 'AI Student Mock Interview',
+    subtitle: 'Practice timed, role-specific student interviews tailored to your degree.',
+    points: ['Course Tailored', '11 Engineer Roles', '03:00 Timer', 'AI Answer Scoring']
   },
   {
     title: 'Skill Gap Analysis',
@@ -591,7 +592,7 @@ function MainLayout() {
               <Routes>
                 <Route path="/" element={<SerkoLandingPage features={features} stats={stats} testimonials={testimonials} faqItems={faqItems} faqOpen={faqOpen} setFaqOpen={setFaqOpen} darkMode={darkMode} setDarkMode={setDarkMode} session={session} onUsageUpdate={bumpUsage} />} />
                 <Route path="/resume-analyzer" element={<ResumeAnalyzerPage onUsageUpdate={bumpUsage} />} />
-                <Route path="/mock-interview" element={<MockInterviewPage onUsageUpdate={bumpUsage} />} />
+                <Route path="/mock-interview" element={<MockInterviewPage onUsageUpdate={bumpUsage} session={session} sessionLoading={sessionLoading} />} />
                 <Route path="/skill-gap-analysis" element={<SkillGapAnalysisPage onUsageUpdate={bumpUsage} />} />
                 <Route path="/learning-roadmap" element={<RoadmapPage />} />
                 <Route path="/dashboard" element={<DashboardPage usageMetrics={usageMetrics} />} />
@@ -1873,57 +1874,6 @@ function ResumeAnalyzerPage({ onUsageUpdate }) {
   );
 }
 
-function MockInterviewPage({ onUsageUpdate }) {
-  const [started, setStarted] = useState(false);
-
-  return (
-    <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-      <div className="rounded-[32px] border border-white/10 bg-white/10 p-8 backdrop-blur-2xl">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-violet-300">Mock interview</p>
-            <h1 className="mt-3 font-['Poppins'] text-3xl font-semibold">Practice under realistic pressure and improve fast</h1>
-          </div>
-          <div className="rounded-full border border-violet-400/30 bg-violet-400/10 px-4 py-2 text-sm text-violet-200">Timer: 03:00</div>
-        </div>
-        <div className="mt-8 grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
-          <div className="rounded-[24px] border border-slate-200/80 bg-white/85 p-6 shadow-xs">
-            <h3 className="font-bold text-slate-900 text-lg">Choose interview type</h3>
-            <div className="mt-4 space-y-3">
-              {['Technical', 'HR', 'Behavioral', 'System Design', 'Coding'].map((type) => (
-                <button key={type} className="flex w-full items-center justify-between rounded-2xl border border-slate-200/70 bg-white/90 px-4 py-3 text-left text-sm font-bold text-slate-800 hover:bg-indigo-50 hover:text-indigo-700 transition">
-                  {type} <ChevronDown className="h-4 w-4" />
-                </button>
-              ))}
-            </div>
-            <button onClick={() => {
-              onUsageUpdate('mockInterview');
-              setStarted(true);
-            }} className="mt-6 w-full sm:w-auto rounded-full bg-purple-600 hover:bg-purple-700 px-7 py-3.5 font-extrabold text-white shadow-md shadow-purple-500/25 hover:shadow-lg transition text-base">Start Interview</button>
-          </div>
-          <div className="rounded-[24px] border border-white/10 bg-white/10 p-6">
-            {started ? (
-              <div>
-                <p className="text-sm text-violet-300">Question 1</p>
-                <h3 className="mt-2 text-2xl font-semibold text-white">Explain a scalable architecture for a real-time chat system.</h3>
-                <p className="mt-4 text-slate-400">Record your answer and receive feedback on communication, confidence, and technical depth.</p>
-                <div className="mt-6 flex flex-wrap gap-3">
-                  <button className="rounded-full border border-violet-400/30 bg-violet-400/10 px-4 py-2 font-semibold text-violet-200">Record Answer</button>
-                  <button className="rounded-full border border-white/10 bg-white/10 px-4 py-2 font-semibold text-white">End Interview</button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex h-full items-center justify-center rounded-[20px] border border-dashed border-white/10 p-10 text-center text-slate-400">
-                Select a mode and start your first interview session.
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ─── Skill Gap Analysis Page ─────────────────────────────────────────────────
 
 const ROLES = [
@@ -1989,6 +1939,7 @@ function SkillGapAnalysisPage({ onUsageUpdate }) {
   const [error, setError] = useState('');
   const [roleSearch, setRoleSearch] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [interviewWeakTopics, setInterviewWeakTopics] = useState([]);
   const dropdownRef = useRef(null);
 
   const filteredRoles = ROLES.filter(r => r.toLowerCase().includes(roleSearch.toLowerCase()));
@@ -1996,6 +1947,11 @@ function SkillGapAnalysisPage({ onUsageUpdate }) {
   useEffect(() => {
     const handler = (e) => { if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setDropdownOpen(false); };
     document.addEventListener('mousedown', handler);
+    getMockInterviewStats().then((stats) => {
+      if (stats?.recentWeakTopics?.length > 0) {
+        setInterviewWeakTopics(stats.recentWeakTopics);
+      }
+    }).catch(() => {});
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
@@ -2120,6 +2076,19 @@ function SkillGapAnalysisPage({ onUsageUpdate }) {
                 className="mt-3 min-h-[220px] w-full rounded-[20px] border border-white/10 bg-[#090d20] p-4 text-sm text-slate-200 placeholder-slate-600 outline-none focus:border-violet-500/50 transition-colors resize-none" />
               <p className="mt-1 text-right text-[11px] text-slate-600">{resumeText.length} / 8000 chars</p>
             </div>
+
+            {interviewWeakTopics.length > 0 && (
+              <div className="rounded-2xl border border-amber-300/60 bg-amber-50/90 p-3.5 text-xs">
+                <p className="font-bold text-amber-900 mb-1.5">Weak topics from your Mock Interviews:</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {interviewWeakTopics.map((topic) => (
+                    <span key={topic} className="rounded-full border border-amber-300 bg-white px-2.5 py-0.5 font-semibold text-amber-800">
+                      {topic}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {error && (
               <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
@@ -2685,6 +2654,7 @@ function DashboardPage({ usageMetrics: localMetrics }) {
   const navigate = useNavigate();
   const [dbMetrics, setDbMetrics] = useState(null);
   const [recentAnalyses, setRecentAnalyses] = useState([]);
+  const [mockStats, setMockStats] = useState({ sessions: [], latestScore: null, averageScore: null, streak: 0, recentWeakTopics: [] });
   const [savedRoadmapsCount, setSavedRoadmapsCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
@@ -2748,27 +2718,37 @@ function DashboardPage({ usageMetrics: localMetrics }) {
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      const [metrics, analyses, roadmaps] = await Promise.all([
+      const [metrics, analyses, roadmaps, mStats] = await Promise.all([
         getUsageMetrics(),
         getResumeAnalyses(5),
         getSavedRoadmaps(),
+        getMockInterviewStats(session),
       ]);
       setDbMetrics(metrics);
       setRecentAnalyses(analyses);
       setSavedRoadmapsCount(roadmaps.length);
+      setMockStats(mStats || { sessions: [], latestScore: null, averageScore: null, streak: 0, recentWeakTopics: [] });
       setLoading(false);
     };
     load();
   }, [session]);
 
   const resumeCount = dbMetrics?.resume_analyzer_count ?? localMetrics.resumeAnalyzer;
-  const mockCount = dbMetrics?.mock_interview_count ?? localMetrics.mockInterview;
+  const mockCount = Math.max(dbMetrics?.mock_interview_count ?? localMetrics.mockInterview, mockStats?.totalCount || 0);
   const skillGapCount = dbMetrics?.skill_gap_count ?? localMetrics.skillGapRoadmap;
   const internshipCount = dbMetrics?.internship_count ?? localMetrics.internshipRecommendation;
 
   const statCards = [
     { label: 'Resume Analyses', value: resumeCount, icon: FileText, color: 'text-indigo-700', bg: 'bg-indigo-50 border-indigo-200', link: '/resume-analyzer' },
-    { label: 'Mock Interviews', value: mockCount, icon: BrainCircuit, color: 'text-sky-700', bg: 'bg-sky-50 border-sky-200', link: '/mock-interview' },
+    {
+      label: 'Mock Interviews',
+      value: mockCount,
+      badge: mockStats?.latestScore !== null ? `Latest: ${mockStats.latestScore}%${mockStats.streak > 0 ? ` • ${mockStats.streak}d streak` : ''}` : null,
+      icon: BrainCircuit,
+      color: 'text-sky-700',
+      bg: 'bg-sky-50 border-sky-200',
+      link: '/mock-interview'
+    },
     { label: 'Skill Gap Analyses', value: skillGapCount, icon: BarChart2, color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200', link: '/skill-gap-analysis' },
     { label: 'Saved Roadmaps', value: savedRoadmapsCount, icon: BookMarked, color: 'text-purple-700', bg: 'bg-purple-50 border-purple-200', link: '/my-roadmaps' },
   ];
@@ -2808,7 +2788,7 @@ function DashboardPage({ usageMetrics: localMetrics }) {
 
       {/* Stat cards */}
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-        {statCards.map(({ label, value, icon: Icon, color, bg, link }, i) => (
+        {statCards.map(({ label, value, badge, icon: Icon, color, bg, link }, i) => (
           <motion.div key={label}
             initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
             onClick={() => navigate(link)}
@@ -2819,6 +2799,9 @@ function DashboardPage({ usageMetrics: localMetrics }) {
                 <p className={`mt-2 text-4xl font-extrabold ${color}`}>
                   {loading ? <span className="inline-block h-8 w-12 animate-pulse rounded-lg bg-slate-200" /> : value}
                 </p>
+                {badge && !loading && (
+                  <p className="mt-1 text-[11px] font-bold text-indigo-700">{badge}</p>
+                )}
               </div>
               <div className={`rounded-xl border p-2.5 ${bg} shadow-2xs`}>
                 <Icon className={`h-5 w-5 ${color}`} />
@@ -2832,8 +2815,8 @@ function DashboardPage({ usageMetrics: localMetrics }) {
       </div>
 
       {/* Tabs */}
-      <div className="mb-6 flex gap-1.5 rounded-2xl bg-white/80 border border-slate-200/90 p-1.5 w-fit shadow-xs backdrop-blur-md">
-        {['overview', 'resume history'].map(tab => (
+      <div className="mb-6 flex flex-wrap gap-1.5 rounded-2xl bg-white/80 border border-slate-200/90 p-1.5 w-fit shadow-xs backdrop-blur-md">
+        {['overview', 'resume history', 'mock interviews'].map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)}
             className={`rounded-xl px-5 py-2 text-sm font-bold capitalize transition ${
               activeTab === tab
@@ -2847,39 +2830,98 @@ function DashboardPage({ usageMetrics: localMetrics }) {
 
       {activeTab === 'overview' && (
         <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-          {/* Resume score chart */}
-          <div className="rounded-[24px] border border-slate-200/80 bg-white/85 p-6 shadow-xs">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="font-bold text-slate-900 text-base">Resume Score History</h3>
-                <p className="text-xs font-semibold text-slate-600 mt-0.5">Your last {recentAnalyses.length} analyses</p>
+          {/* Charts column */}
+          <div className="space-y-6">
+            {/* Resume score chart */}
+            <div className="rounded-[24px] border border-slate-200/80 bg-white/85 p-6 shadow-xs">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">Resume Score History</h3>
+                  <p className="text-xs font-semibold text-slate-600 mt-0.5">Your last {recentAnalyses.length} analyses</p>
+                </div>
+                {avgScore !== null && (
+                  <div className="text-right">
+                    <p className="text-xs font-bold text-slate-600">Avg score</p>
+                    <p className={`text-2xl font-extrabold ${avgScore >= 70 ? 'text-emerald-700' : avgScore >= 50 ? 'text-amber-700' : 'text-rose-700'}`}>{avgScore}</p>
+                  </div>
+                )}
               </div>
-              {avgScore !== null && (
-                <div className="text-right">
-                  <p className="text-xs font-bold text-slate-600">Avg score</p>
-                  <p className={`text-2xl font-extrabold ${avgScore >= 70 ? 'text-emerald-700' : avgScore >= 50 ? 'text-amber-700' : 'text-rose-700'}`}>{avgScore}</p>
+              {loading ? (
+                <div className="h-48 animate-pulse rounded-2xl bg-slate-100" />
+              ) : scoreChartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={200}>
+                  <LineChart data={scoreChartData}>
+                    <CartesianGrid stroke="rgba(203, 213, 225, 0.6)" />
+                    <XAxis dataKey="name" tick={{ fill: '#334155', fontSize: 11, fontWeight: 600 }} />
+                    <YAxis domain={[0, 100]} tick={{ fill: '#334155', fontSize: 11, fontWeight: 600 }} />
+                    <Tooltip contentStyle={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: 12, color: '#0f172a', fontWeight: 600, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }} />
+                    <Line type="monotone" dataKey="score" stroke="#4f46e5" strokeWidth={3} dot={{ fill: '#4f46e5', r: 4 }} activeDot={{ r: 6 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-48 flex flex-col items-center justify-center text-center rounded-2xl border border-dashed border-slate-300 bg-slate-50/50">
+                  <FileText className="h-8 w-8 text-indigo-500 mb-2" />
+                  <p className="text-slate-800 text-sm font-bold">No resume analyses yet</p>
+                  <Link to="/resume-analyzer" className="mt-3 text-xs font-bold text-indigo-600 hover:text-indigo-800 hover:underline">Analyse your first resume →</Link>
                 </div>
               )}
             </div>
-            {loading ? (
-              <div className="h-48 animate-pulse rounded-2xl bg-slate-100" />
-            ) : scoreChartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={scoreChartData}>
-                  <CartesianGrid stroke="rgba(203, 213, 225, 0.6)" />
-                  <XAxis dataKey="name" tick={{ fill: '#334155', fontSize: 11, fontWeight: 600 }} />
-                  <YAxis domain={[0, 100]} tick={{ fill: '#334155', fontSize: 11, fontWeight: 600 }} />
-                  <Tooltip contentStyle={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: 12, color: '#0f172a', fontWeight: 600, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }} />
-                  <Line type="monotone" dataKey="score" stroke="#4f46e5" strokeWidth={3} dot={{ fill: '#4f46e5', r: 4 }} activeDot={{ r: 6 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-48 flex flex-col items-center justify-center text-center rounded-2xl border border-dashed border-slate-300 bg-slate-50/50">
-                <FileText className="h-8 w-8 text-indigo-500 mb-2" />
-                <p className="text-slate-800 text-sm font-bold">No resume analyses yet</p>
-                <Link to="/resume-analyzer" className="mt-3 text-xs font-bold text-indigo-600 hover:text-indigo-800 hover:underline">Analyse your first resume →</Link>
+
+            {/* Mock Interview Score & Streak Card (PRD FR-12) */}
+            <div className="rounded-[24px] border border-slate-200/80 bg-white/85 p-6 shadow-xs">
+              <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">Student Mock Interviews</h3>
+                  <p className="text-xs font-semibold text-slate-600 mt-0.5">
+                    Latest score, practice streak, and recent sessions
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-center">
+                    <p className="text-[10px] font-bold uppercase text-amber-800">Streak</p>
+                    <p className="text-lg font-extrabold text-amber-700">{mockStats.streak || 0}d</p>
+                  </div>
+                  {mockStats.latestScore !== null && (
+                    <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-center">
+                      <p className="text-[10px] font-bold uppercase text-indigo-800">Latest</p>
+                      <p className="text-lg font-extrabold text-indigo-700">{mockStats.latestScore}%</p>
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
+              {mockStats.sessions.length > 0 ? (
+                <div className="space-y-2.5">
+                  {mockStats.sessions.slice(0, 3).map((ms) => {
+                    const mScore = ms.overall_score ?? ms.overallScore ?? 0;
+                    return (
+                      <div key={ms.id} className="flex items-center justify-between rounded-xl border border-slate-200/80 bg-white px-3.5 py-2.5 text-xs">
+                        <div className="min-w-0">
+                          <p className="font-bold text-slate-900 truncate">{ms.role} • {ms.difficulty}</p>
+                          <p className="text-[11px] text-slate-600">{ms.course} • {new Date(ms.created_at || ms.createdAt).toLocaleDateString()}</p>
+                        </div>
+                        <span className={`ml-3 shrink-0 rounded-full border px-2.5 py-0.5 font-extrabold ${
+                          mScore >= 70
+                            ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                            : mScore >= 50
+                              ? 'border-amber-200 bg-amber-50 text-amber-700'
+                              : 'border-rose-200 bg-rose-50 text-rose-700'
+                        }`}>
+                          {mScore}%
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50/50 py-8 text-center">
+                  <BrainCircuit className="h-7 w-7 text-indigo-500 mb-2" />
+                  <p className="text-sm font-bold text-slate-800">No mock interviews completed yet</p>
+                  <Link to="/mock-interview" className="mt-2 text-xs font-bold text-indigo-600 hover:underline">
+                    Start your first Student Interview →
+                  </Link>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Quick actions + profile */}
@@ -3033,6 +3075,79 @@ function DashboardPage({ usageMetrics: localMetrics }) {
           )}
         </div>
       )}
+
+      {activeTab === 'mock interviews' && (
+        <div className="space-y-4">
+          {loading ? (
+            <div className="space-y-3 animate-pulse">
+              {[1,2,3].map(i => <div key={i} className="h-24 rounded-[24px] bg-white/5 border border-white/10" />)}
+            </div>
+          ) : mockStats.sessions.length === 0 ? (
+            <div className="rounded-[32px] border border-white/10 bg-white/5 p-16 text-center">
+              <BrainCircuit className="mx-auto h-10 w-10 text-violet-400/40 mb-3" />
+              <h3 className="text-lg font-semibold text-white mb-1">No mock interview sessions yet</h3>
+              <p className="text-slate-400 text-sm mb-5">Complete a timed student interview to track your scores and weak topics here.</p>
+              <Link to="/mock-interview" className="inline-flex items-center gap-2 rounded-full bg-slate-900 hover:bg-slate-800 px-6 py-3 text-sm font-extrabold text-white shadow-sm transition">
+                Start Mock Interview
+              </Link>
+            </div>
+          ) : (
+            mockStats.sessions.map((ms, idx) => {
+              const mScore = ms.overall_score ?? ms.overallScore ?? 0;
+              const scoreColor = mScore >= 70 ? 'text-emerald-700' : mScore >= 50 ? 'text-amber-700' : 'text-rose-700';
+              const scoreBg = mScore >= 70 ? 'border-emerald-300 bg-emerald-50' : mScore >= 50 ? 'border-amber-300 bg-amber-50' : 'border-rose-300 bg-rose-50';
+              const weakList = ms.weak_topics || ms.weakTopics || [];
+              return (
+                <motion.div key={ms.id}
+                  initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}
+                  className="rounded-[24px] border border-slate-200/80 bg-white/85 p-5 shadow-xs backdrop-blur-2xl">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-start gap-4">
+                      <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border text-lg font-extrabold ${scoreBg} ${scoreColor}`}>
+                        {mScore}%
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-bold text-slate-900 truncate">{ms.role}</p>
+                        <div className="flex flex-wrap gap-2 mt-1.5">
+                          <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-0.5 text-[11px] font-bold text-indigo-700">{ms.course}</span>
+                          <span className="rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[11px] font-bold text-slate-700">{ms.difficulty}</span>
+                          <span className="rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[11px] font-bold text-slate-700">{ms.question_count ?? ms.questionCount} Qs</span>
+                        </div>
+                        <p className="text-xs font-semibold text-slate-600 mt-1">{new Date(ms.created_at || ms.createdAt).toLocaleString()}</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2 shrink-0">
+                      {weakList.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/learning-roadmap?role=${encodeURIComponent(ms.role)}&skills=${encodeURIComponent(JSON.stringify(weakList))}`)}
+                          className="flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3.5 py-2 text-xs font-bold text-amber-800 hover:bg-amber-100 transition cursor-pointer"
+                        >
+                          <GraduationCap className="h-3.5 w-3.5" /> Study Weak Topics
+                        </button>
+                      )}
+                      <Link to="/mock-interview"
+                        className="flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-4 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition">
+                        Practice Again <ArrowRight className="h-3 w-3" />
+                      </Link>
+                    </div>
+                  </div>
+                  {weakList.length > 0 && (
+                    <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-slate-200/70 pt-3">
+                      <span className="text-[11px] font-bold text-slate-600 mr-1">Weak topics:</span>
+                      {weakList.map((wt) => (
+                        <span key={wt} className="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-0.5 text-[11px] font-semibold text-rose-700">
+                          {wt}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </motion.div>
+              );
+            })
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -3049,7 +3164,7 @@ function PricingPage({ onUsageUpdate }) {
           <h3 className="text-2xl font-semibold text-white">Free</h3>
           <p className="mt-2 text-slate-400">Great for first steps and foundational preparation.</p>
           <div className="mt-6 space-y-3 text-sm text-slate-300">
-            {['Resume Analysis', 'Roadmaps', 'Skill Analysis'].map((item) => (
+            {['Resume Analysis', '5 Mock Interviews / month', 'Roadmaps', 'Skill Analysis'].map((item) => (
               <div key={item} className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-violet-300" /> {item}</div>
             ))}
           </div>

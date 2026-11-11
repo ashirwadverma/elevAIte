@@ -1,9 +1,17 @@
 import { supabase, isSupabaseConfigured } from './supabase.js';
+import { calculateInterviewStreak } from './mockInterviewEngine.js';
+
+export { calculateInterviewStreak };
 
 const DEVICE_KEY = 'elevAIte-device-id';
 const USAGE_STORAGE_KEY = 'elevAIte_usage_metrics';
 const RESUME_STORAGE_KEY = 'elevAIte_saved_resume_analyses';
 const ROADMAPS_STORAGE_KEY = 'elevAIte_saved_roadmaps';
+const MOCK_INTERVIEWS_STORAGE_KEY = 'elevAIte_mock_interview_sessions';
+const USER_PROFILE_KEY = 'elevAIte_user_profile';
+const USER_PLAN_KEY = 'elevAIte_user_plan';
+
+export const FREE_MONTHLY_MOCK_INTERVIEW_LIMIT = 5;
 
 export function getDeviceId() {
   let id = localStorage.getItem(DEVICE_KEY);
@@ -322,4 +330,173 @@ export async function deleteRoadmap(id) {
       .delete()
       .eq('id', id);
   } catch {}
+}
+
+// ── Mock Interviews & Profile Integration (PRD Section 11 & IR-4..IR-6) ──
+
+export function getStudentPreferredCourse(session) {
+  const metaCourse = session?.user?.user_metadata?.course;
+  if (metaCourse) return metaCourse;
+  try {
+    const profile = JSON.parse(localStorage.getItem(USER_PROFILE_KEY) || '{}');
+    if (profile?.course) return profile.course;
+  } catch {}
+  return '';
+}
+
+export function saveStudentPreferredCourse(course) {
+  if (!course) return;
+  try {
+    const profile = JSON.parse(localStorage.getItem(USER_PROFILE_KEY) || '{}');
+    profile.course = course;
+    localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(profile));
+  } catch {}
+}
+
+export function isStudentProPlan(session) {
+  if (session?.user?.user_metadata?.plan === 'pro') return true;
+  try {
+    return localStorage.getItem(USER_PLAN_KEY) === 'pro';
+  } catch {}
+  return false;
+}
+
+export async function saveMockInterviewSession(sessionData) {
+  const { userId, deviceId } = await getIdentity();
+  const id = 'mi_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+  const createdAt = new Date().toISOString();
+
+  const row = {
+    id,
+    userId,
+    user_id: userId,
+    device_id: deviceId,
+    createdAt,
+    created_at: createdAt,
+    course: sessionData.course,
+    role: sessionData.role,
+    difficulty: sessionData.difficulty,
+    questionCount: sessionData.questionCount,
+    question_count: sessionData.questionCount,
+    overallScore: sessionData.overallScore,
+    overall_score: sessionData.overallScore,
+    averageScoreOutOf10: sessionData.averageScoreOutOf10,
+    average_score_out_of_10: sessionData.averageScoreOutOf10,
+    weakTopics: sessionData.weakTopics || [],
+    weak_topics: sessionData.weakTopics || [],
+    strongTopics: sessionData.strongTopics || [],
+    strong_topics: sessionData.strongTopics || [],
+    answers: sessionData.answers || [],
+  };
+
+  try {
+    const existing = JSON.parse(localStorage.getItem(MOCK_INTERVIEWS_STORAGE_KEY) || '[]');
+    const updated = [row, ...existing].slice(0, 50);
+    localStorage.setItem(MOCK_INTERVIEWS_STORAGE_KEY, JSON.stringify(updated));
+  } catch {}
+
+  if (!isSupabaseConfigured) return row;
+
+  try {
+    const dbRow = {
+      device_id: deviceId,
+      ...(userId ? { user_id: userId } : {}),
+      course: row.course,
+      role: row.role,
+      difficulty: row.difficulty,
+      question_count: row.questionCount,
+      overall_score: row.overallScore,
+      average_score_out_of_10: row.averageScoreOutOf10,
+      weak_topics: row.weakTopics,
+      strong_topics: row.strongTopics,
+      answers: row.answers,
+    };
+    const { data, error } = await supabase
+      .from('mock_interview_sessions')
+      .insert(dbRow)
+      .select()
+      .single();
+    if (!error && data) return { ...row, ...data };
+  } catch {}
+
+  return row;
+}
+
+export async function getMockInterviewSessions(limit = 20) {
+  let localList = [];
+  try {
+    localList = JSON.parse(localStorage.getItem(MOCK_INTERVIEWS_STORAGE_KEY) || '[]');
+  } catch {}
+
+  if (!isSupabaseConfigured) {
+    return localList.slice(0, limit);
+  }
+
+  try {
+    const { userId, deviceId } = await getIdentity();
+    let query = supabase.from('mock_interview_sessions').select('*');
+    if (userId) {
+      query = query.eq('user_id', userId);
+    } else {
+      query = query.eq('device_id', deviceId).is('user_id', null);
+    }
+    const { data } = await query
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (data && data.length > 0) {
+      return data.map(d => ({
+        ...d,
+        createdAt: d.created_at,
+        questionCount: d.question_count,
+        overallScore: d.overall_score,
+        averageScoreOutOf10: d.average_score_out_of_10,
+        weakTopics: d.weak_topics || [],
+        strongTopics: d.strong_topics || [],
+      }));
+    }
+  } catch {}
+
+  return localList.slice(0, limit);
+}
+
+export async function getMockInterviewStats(session = null) {
+  const sessions = await getMockInterviewSessions(50);
+  const now = new Date();
+  const currentMonthKey = `${now.getFullYear()}-${now.getMonth()}`;
+
+  const monthlyCount = sessions.filter(s => {
+    const dt = new Date(s.created_at || s.createdAt);
+    return !Number.isNaN(dt.getTime()) && `${dt.getFullYear()}-${dt.getMonth()}` === currentMonthKey;
+  }).length;
+
+  const latestSession = sessions[0] || null;
+  const latestScore = latestSession ? (latestSession.overall_score ?? latestSession.overallScore ?? 0) : null;
+  const averageScore = sessions.length > 0
+    ? Math.round(sessions.reduce((sum, s) => sum + (s.overall_score ?? s.overallScore ?? 0), 0) / sessions.length)
+    : null;
+  const streak = calculateInterviewStreak(sessions);
+
+  const weakTopicCounts = new Map();
+  for (const s of sessions.slice(0, 5)) {
+    for (const wt of (s.weak_topics || s.weakTopics || [])) {
+      weakTopicCounts.set(wt, (weakTopicCounts.get(wt) || 0) + 1);
+    }
+  }
+  const recentWeakTopics = Array.from(weakTopicCounts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([topic]) => topic);
+
+  return {
+    sessions,
+    totalCount: sessions.length,
+    monthlyCount,
+    isPro: isStudentProPlan(session),
+    monthlyLimit: FREE_MONTHLY_MOCK_INTERVIEW_LIMIT,
+    latestSession,
+    latestScore,
+    averageScore,
+    streak,
+    recentWeakTopics,
+  };
 }

@@ -1,0 +1,209 @@
+{
+  "courses": [
+    "B.Tech / B.E. (CSE / IT)",
+    "B.Tech / B.E. (AI & ML)",
+    "B.Tech / B.E. (Data Science)",
+    "B.Tech / B.E. (ECE)",
+    "BCA",
+    "MCA",
+    "B.Sc (CS / IT)",
+    "M.Tech",
+    "Diploma (CS / IT)"
+  ],
+  "engineerTypes": {
+    "AI Engineer": {
+      "topics": [
+        "ML basics",
+        "Deep learning",
+        "LLMs",
+        "Prompt engineering",
+        "RAG",
+        "Model deployment"
+      ],
+      "summary": "ML basics, deep learning, LLMs, prompt engineering, RAG, model deployment"
+    },
+    "Machine Learning Engineer": {
+      "topics": [
+        "Algorithms",
+        "Feature engineering",
+        "Evaluation metrics",
+        "MLOps basics"
+      ],
+      "summary": "Algorithms, feature engineering, evaluation metrics, MLOps basics"
+    },
+    "Data Scientist / Analyst": {
+      "topics": [
+        "Statistics",
+        "SQL",
+        "Python",
+        "pandas",
+        "Visualization",
+        "Case thinking"
+      ],
+      "summary": "Statistics, SQL, Python, pandas, visualization, case thinking"
+    },
+    "Full Stack Engineer": {
+      "topics": [
+        "HTML",
+        "CSS",
+        "JavaScript",
+        "React",
+        "Node.js",
+        "REST APIs",
+        "Databases"
+      ],
+      "summary": "HTML, CSS, JavaScript, React, Node.js, REST APIs, databases"
+    },
+    "Frontend Engineer": {
+      "topics": [
+        "JavaScript",
+        "React",
+        "CSS",
+        "Accessibility",
+        "Performance",
+        "Browser basics"
+      ],
+      "summary": "JavaScript, React, CSS, accessibility, performance, browser basics"
+    },
+    "Backend Engineer": {
+      "topics": [
+        "APIs",
+        "Databases",
+        "Authentication",
+        "Caching",
+        "Scalability basics"
+      ],
+      "summary": "APIs, databases, authentication, caching, scalability basics"
+    },
+    "Mobile App Engineer": {
+      "topics": [
+        "Android or iOS basics",
+        "Flutter or React Native",
+        "App lifecycle"
+      ],
+      "summary": "Android or iOS basics, Flutter or React Native, app lifecycle"
+    },
+    "DevOps / Cloud Engineer": {
+      "topics": [
+        "Linux",
+        "Git",
+        "Docker",
+        "CI/CD",
+        "AWS or Azure basics"
+      ],
+      "summary": "Linux, Git, Docker, CI/CD, AWS or Azure basics"
+    },
+    "Cybersecurity Engineer": {
+      "topics": [
+        "Networking",
+        "OWASP Top 10",
+        "Cryptography basics",
+        "Threat thinking"
+      ],
+      "summary": "Networking, OWASP Top 10, cryptography basics, threat thinking"
+    },
+    "QA / Test Engineer": {
+      "topics": [
+        "Testing types",
+        "Automation",
+        "Test cases",
+        "Bug reporting"
+      ],
+      "summary": "Testing types, automation, test cases, bug reporting"
+    },
+    "Embedded / IoT Engineer": {
+      "topics": [
+        "C/C++",
+        "Microcontrollers",
+        "Protocols",
+        "RTOS basics"
+      ],
+      "summary": "C/C++, microcontrollers, protocols, RTOS basics"
+    }
+  },
+  "courseRoles": {
+    "B.Tech / B.E. (CSE / IT)": [
+      "Full Stack Engineer",
+      "Backend Engineer",
+      "Frontend Engineer",
+      "AI Engineer",
+      "Machine Learning Engineer",
+      "Data Scientist / Analyst",
+      "DevOps / Cloud Engineer",
+      "Cybersecurity Engineer",
+      "Mobile App Engineer",
+      "QA / Test Engineer"
+    ],
+    "B.Tech / B.E. (AI & ML)": [
+      "AI Engineer",
+      "Machine Learning Engineer",
+      "Data Scientist / Analyst",
+      "Backend Engineer",
+      "Full Stack Engineer",
+      "DevOps / Cloud Engineer",
+      "Frontend Engineer"
+    ],
+    "B.Tech / B.E. (Data Science)": [
+      "Data Scientist / Analyst",
+      "Machine Learning Engineer",
+      "AI Engineer",
+      "Backend Engineer",
+      "Full Stack Engineer"
+    ],
+    "B.Tech / B.E. (ECE)": [
+      "Embedded / IoT Engineer",
+      "Backend Engineer",
+      "DevOps / Cloud Engineer",
+      "Cybersecurity Engineer",
+      "Full Stack Engineer",
+      "QA / Test Engineer",
+      "AI Engineer"
+    ],
+    "BCA": [
+      "Full Stack Engineer",
+      "Frontend Engineer",
+      "Backend Engineer",
+      "Mobile App Engineer",
+      "QA / Test Engineer",
+      "Data Scientist / Analyst"
+    ],
+    "MCA": [
+      "Full Stack Engineer",
+      "Backend Engineer",
+      "AI Engineer",
+      "Data Scientist / Analyst",
+      "DevOps / Cloud Engineer",
+      "Frontend Engineer",
+      "Mobile App Engineer",
+      "Cybersecurity Engineer",
+      "QA / Test Engineer"
+    ],
+    "B.Sc (CS / IT)": [
+      "Frontend Engineer",
+      "Full Stack Engineer",
+      "Backend Engineer",
+      "Data Scientist / Analyst",
+      "QA / Test Engineer",
+      "Mobile App Engineer"
+    ],
+    "M.Tech": [
+      "AI Engineer",
+      "Machine Learning Engineer",
+      "Backend Engineer",
+      "DevOps / Cloud Engineer",
+      "Cybersecurity Engineer",
+      "Embedded / IoT Engineer",
+      "Data Scientist / Analyst",
+      "Full Stack Engineer"
+    ],
+    "Diploma (CS / IT)": [
+      "Frontend Engineer",
+      "QA / Test Engineer",
+      "Mobile App Engineer",
+      "Full Stack Engineer",
+      "Backend Engineer",
+      "DevOps / Cloud Engineer"
+    ]
+  }
+}
+

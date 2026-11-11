@@ -1,0 +1,1510 @@
+{
+  "AI Engineer": [
+    {
+      "id": "ai-1",
+      "topic": "ML basics",
+      "difficulty": "Beginner",
+      "text": "Explain the difference between supervised, unsupervised, and reinforcement learning with one real-world example of each.",
+      "timeLimitSec": 180,
+      "keyPoints": ["labeled data", "unlabeled", "reward", "classification", "clustering", "environment"],
+      "idealAnswer": "Supervised learning trains on labeled input-output pairs (e.g., spam detection). Unsupervised learning discovers hidden patterns in unlabeled data (e.g., customer segmentation via clustering). Reinforcement learning trains an agent via trial-and-error rewards from an environment (e.g., game-playing bots or robotics)."
+    },
+    {
+      "id": "ai-2",
+      "topic": "ML basics",
+      "difficulty": "Beginner",
+      "text": "What are overfitting and underfitting in a model, and how would you prevent both during training?",
+      "timeLimitSec": 180,
+      "keyPoints": ["training data", "generalize", "variance", "bias", "regularization", "cross-validation"],
+      "idealAnswer": "Overfitting happens when a model memorizes noise in training data (high variance, poor test accuracy); fix with regularization (L1/L2, dropout), more data, or cross-validation. Underfitting happens when a model is too simple to capture patterns (high bias); fix with richer features, longer training, or a more expressive architecture."
+    },
+    {
+      "id": "ai-3",
+      "topic": "Deep learning",
+      "difficulty": "Beginner",
+      "text": "Why do neural networks use non-linear activation functions like ReLU instead of leaving every layer linear?",
+      "timeLimitSec": 180,
+      "keyPoints": ["linear", "non-linear", "relu", "stack", "complex", "vanishing gradient"],
+      "idealAnswer": "Without non-linear activations, stacking multiple linear layers mathematically collapses into a single linear transformation, so the network cannot learn complex boundaries. Activations like ReLU introduce non-linearity, keep gradients strong for positive inputs, and enable deep hierarchical feature learning."
+    },
+    {
+      "id": "ai-4",
+      "topic": "LLMs",
+      "difficulty": "Beginner",
+      "text": "What are tokens and context windows in Large Language Models, and why do they matter when building an AI app?",
+      "timeLimitSec": 180,
+      "keyPoints": ["subword", "context window", "limit", "cost", "latency", "truncation"],
+      "idealAnswer": "Tokens are subword chunks models read and generate rather than raw characters or whole words. The context window is the maximum token budget (prompt + history + output) a model can attend to at once, directly affecting memory limits, truncation risk, API latency, and token cost."
+    },
+    {
+      "id": "ai-5",
+      "topic": "Prompt engineering",
+      "difficulty": "Beginner",
+      "text": "Explain zero-shot, few-shot, and chain-of-thought prompting, and when you would choose few-shot prompting.",
+      "timeLimitSec": 180,
+      "keyPoints": ["zero-shot", "examples", "few-shot", "format", "reasoning", "step by step"],
+      "idealAnswer": "Zero-shot asks the model without examples, few-shot provides 2–5 input-output examples to anchor tone and JSON/output structure, and chain-of-thought guides step-by-step reasoning. Choose few-shot when strict output schemas, edge-case classification rules, or specific domain formats are needed without fine-tuning."
+    },
+    {
+      "id": "ai-6",
+      "topic": "Deep learning",
+      "difficulty": "Intermediate",
+      "text": "In the Transformer architecture, what problem does self-attention solve compared to RNNs and LSTMs?",
+      "timeLimitSec": 180,
+      "keyPoints": ["parallel", "long-range", "sequential", "dependencies", "query key value", "vanishing"],
+      "idealAnswer": "RNNs process tokens sequentially, creating training bottlenecks and forgetting long-range dependencies. Self-attention compares every token against every other token directly using Query, Key, and Value projections, enabling parallel GPU training and capturing long-distance context in constant path length."
+    },
+    {
+      "id": "ai-7",
+      "topic": "RAG",
+      "difficulty": "Intermediate",
+      "text": "Walk through how a Retrieval-Augmented Generation (RAG) pipeline works end-to-end for answering questions from college PDFs.",
+      "timeLimitSec": 180,
+      "keyPoints": ["chunking", "embeddings", "vector database", "similarity", "retrieve", "prompt"],
+      "idealAnswer": "At ingestion, documents are parsed, split into overlapping chunks, converted into vector embeddings, and indexed in a vector store. At query time, the user question is embedded, top-k semantically similar chunks are retrieved via cosine similarity (optionally reranked), and injected into the LLM prompt to ground the answer and cite sources."
+    },
+    {
+      "id": "ai-8",
+      "topic": "LLMs",
+      "difficulty": "Intermediate",
+      "text": "How do you reduce LLM hallucinations in a production student-facing Q&A chatbot?",
+      "timeLimitSec": 180,
+      "keyPoints": ["rag", "temperature", "grounding", "citation", "fallback", "prompt"],
+      "idealAnswer": "Ground answers using RAG over verified documents, instruct the model strictly to say 'I don't know' when context is missing, lower temperature (e.g., 0–0.2), enforce JSON schema validation and citation checks, and evaluate outputs automatically against ground-truth test sets."
+    },
+    {
+      "id": "ai-9",
+      "topic": "Prompt engineering",
+      "difficulty": "Intermediate",
+      "text": "Suppose you need an LLM to return strictly valid JSON for your backend. What techniques and safeguards would you put in place?",
+      "timeLimitSec": 180,
+      "keyPoints": ["json", "schema", "response_format", "validation", "retry", "examples"],
+      "idealAnswer": "Use structured outputs / JSON mode at the API level, specify the exact JSON schema and types in the system prompt, provide a clean example, parse and validate the output on the server with Zod/Pydantic, and trigger one repair retry or safe fallback if validation fails."
+    },
+    {
+      "id": "ai-10",
+      "topic": "Model deployment",
+      "difficulty": "Intermediate",
+      "text": "Why should LLM API keys never sit in React frontend code, and how should a student project call AI models securely?",
+      "timeLimitSec": 180,
+      "keyPoints": ["browser", "exposed", "backend proxy", "environment variables", "rate limit", "security"],
+      "idealAnswer": "Frontend bundles execute in the user's browser where anyone can inspect network requests or source code and steal API keys to rack up charges. Always proxy AI calls through a backend route or serverless function where keys stay in server environment variables, paired with auth checks and rate limiting."
+    },
+    {
+      "id": "ai-11",
+      "topic": "RAG",
+      "difficulty": "Advanced",
+      "text": "Your RAG chatbot retrieves irrelevant chunks when users search exact error codes or product names. How would you upgrade retrieval quality?",
+      "timeLimitSec": 180,
+      "keyPoints": ["hybrid search", "bm25", "reranking", "chunk size", "metadata", "vector"],
+      "idealAnswer": "Dense vector embeddings often miss exact lexical matches like IDs or error codes. Combine semantic vector search with BM25 keyword search (hybrid search), add metadata filtering, tune chunk size/overlap with parent-child retrieval, and apply a cross-encoder reranker before passing top chunks to the LLM."
+    },
+    {
+      "id": "ai-12",
+      "topic": "LLMs",
+      "difficulty": "Advanced",
+      "text": "Compare prompt engineering, RAG, and fine-tuning (LoRA/QLoRA). How do you decide which one a team should pick first?",
+      "timeLimitSec": 180,
+      "keyPoints": ["cost", "knowledge", "behavior", "rag", "fine-tuning", "latency"],
+      "idealAnswer": "Start with prompt engineering for fast iteration on task formatting and logic. Add RAG when the model needs up-to-date, private, or citable factual knowledge. Choose fine-tuning (such as LoRA/QLoRA) only when you have clean labeled datasets and need consistent domain style, specialized behavior, or smaller-model latency/cost savings."
+    },
+    {
+      "id": "ai-13",
+      "topic": "Model deployment",
+      "difficulty": "Advanced",
+      "text": "How would you design latency optimization, caching, and cost controls for an AI SaaS tool expecting 10,000 student requests/day?",
+      "timeLimitSec": 180,
+      "keyPoints": ["streaming", "caching", "model routing", "token limit", "rate limit", "quantization"],
+      "idealAnswer": "Stream tokens via SSE to lower perceived latency, cache exact/semantic queries with Redis, route simple classification/evaluation tasks to smaller fast models while reserving large models for complex reasoning, enforce strict max_tokens and input character caps, and rate-limit per user/IP."
+    },
+    {
+      "id": "ai-14",
+      "topic": "Deep learning",
+      "difficulty": "Advanced",
+      "text": "What causes gradient vanishing and exploding during deep network training, and what modern techniques stabilize training?",
+      "timeLimitSec": 180,
+      "keyPoints": ["backpropagation", "residual", "normalization", "clipping", "initialization", "relu"],
+      "idealAnswer": "Repeated multiplication of small (<1) or large (>1) Jacobians across many layers during backpropagation shrinks gradients to zero or blows them up to NaNs. Modern networks stabilize this via residual skip connections (ResNet/Transformers), LayerNorm/BatchNorm, He/Xavier initialization, ReLU/GELU activations, and gradient clipping."
+    },
+    {
+      "id": "ai-15",
+      "topic": "RAG",
+      "difficulty": "Advanced",
+      "text": "How would you objectively evaluate whether an update to your RAG pipeline actually improved answer quality?",
+      "timeLimitSec": 180,
+      "keyPoints": ["golden dataset", "recall", "faithfulness", "relevance", "ragas", "latency"],
+      "idealAnswer": "Build a curated golden test set of representative queries and expected contexts/answers. Measure retrieval independently (Recall@k, MRR) and generation quality (faithfulness/groundedness, answer relevance, hallucination rate via automated LLM-as-judge frameworks like RAGAS + human spot checks), while tracking p95 latency and cost per query."
+    }
+  ],
+  "Machine Learning Engineer": [
+    {
+      "id": "ml-1",
+      "topic": "Algorithms",
+      "difficulty": "Beginner",
+      "text": "Explain the bias-variance tradeoff in machine learning. Which models tend to have high bias vs high variance?",
+      "timeLimitSec": 180,
+      "keyPoints": ["bias", "variance", "underfitting", "overfitting", "complexity", "linear"],
+      "idealAnswer": "Bias is error from overly simplistic assumptions (e.g., linear regression on non-linear data, causing underfitting). Variance is sensitivity to small fluctuations in training data (e.g., deep unpruned decision trees, causing overfitting). Balancing complexity minimizes total generalization error."
+    },
+    {
+      "id": "ml-2",
+      "topic": "Evaluation metrics",
+      "difficulty": "Beginner",
+      "text": "Why is accuracy a misleading metric for fraud detection or rare disease diagnosis, and what metrics should you use instead?",
+      "timeLimitSec": 180,
+      "keyPoints": ["imbalanced", "precision", "recall", "f1", "pr-auc", "false negative"],
+      "idealAnswer": "With severe class imbalance (e.g., 99% normal, 1% fraud), a dummy model predicting all normal hits 99% accuracy while catching zero fraud. Use Precision, Recall, F1-score, PR-AUC, and confusion matrix analysis depending on whether false positives or false negatives are costlier."
+    },
+    {
+      "id": "ml-3",
+      "topic": "Feature engineering",
+      "difficulty": "Beginner",
+      "text": "Why and when do you need feature scaling (StandardScaler vs MinMaxScaler), and which algorithms do not require it?",
+      "timeLimitSec": 180,
+      "keyPoints": ["distance", "gradient", "standardization", "normalization", "tree", "knn"],
+      "idealAnswer": "Distance-based (KNN, K-Means, SVM) and gradient-descent models (Linear/Logistic Regression, Neural Nets) converge faster and behave fairly when features share similar scales. Tree-based models (Decision Trees, Random Forest, XGBoost) split on single feature thresholds, so they are invariant to monotonic scaling."
+    },
+    {
+      "id": "ml-4",
+      "topic": "Algorithms",
+      "difficulty": "Beginner",
+      "text": "Compare Decision Trees and Random Forests. Why does bagging reduce variance?",
+      "timeLimitSec": 180,
+      "keyPoints": ["ensemble", "bagging", "bootstrap", "overfitting", "variance", "random features"],
+      "idealAnswer": "A single deep decision tree easily overfits training data (high variance). Random Forest trains many trees on bootstrap samples while sampling a random subset of features at each split; averaging predictions across decorrelated trees cancels out individual noise and drastically lowers variance."
+    },
+    {
+      "id": "ml-5",
+      "topic": "Feature engineering",
+      "difficulty": "Beginner",
+      "text": "How do you encode categorical features (One-Hot vs Label/Ordinal vs Target Encoding), and what pitfalls should you avoid?",
+      "timeLimitSec": 180,
+      "keyPoints": ["one-hot", "ordinal", "high cardinality", "leakage", "order", "dummy"],
+      "idealAnswer": "Use One-Hot Encoding for nominal features with low cardinality so models don't assume artificial numeric ordering. Use Ordinal Encoding only for naturally ordered labels (Low/Med/High). For high-cardinality columns, use Target or Frequency Encoding computed strictly inside training folds to prevent target leakage."
+    },
+    {
+      "id": "ml-6",
+      "topic": "Algorithms",
+      "difficulty": "Intermediate",
+      "text": "Contrast Bagging (Random Forest) with Boosting (XGBoost/LightGBM). How do they differ in training and error reduction?",
+      "timeLimitSec": 180,
+      "keyPoints": ["parallel", "sequential", "residuals", "variance", "bias", "trees"],
+      "idealAnswer": "Bagging trains independent trees in parallel on random subsets and averages them to cut variance. Boosting trains shallow trees sequentially, where each new tree learns to correct the residual errors/gradients of previous trees, primarily reducing bias while using shrinkage and depth limits to control variance."
+    },
+    {
+      "id": "ml-7",
+      "topic": "Feature engineering",
+      "difficulty": "Intermediate",
+      "text": "What is data leakage in an ML pipeline, and give two common mistakes students make that cause it?",
+      "timeLimitSec": 180,
+      "keyPoints": ["train test split", "scaler", "future", "cross-validation", "pipeline", "test data"],
+      "idealAnswer": "Data leakage occurs when information from outside the training set—especially test targets or future timestamps—leaks into training, inflating validation scores. Common mistakes include fitting StandardScaler/imputers before train-test split, and random-splitting time-series data instead of temporal splitting; fix with scikit-learn Pipelines."
+    },
+    {
+      "id": "ml-8",
+      "topic": "Evaluation metrics",
+      "difficulty": "Intermediate",
+      "text": "Explain precision vs recall tradeoff and how adjusting the classification threshold affects an ROC curve vs Precision-Recall curve.",
+      "timeLimitSec": 180,
+      "keyPoints": ["threshold", "false positive", "false negative", "roc", "tpr", "fpr"],
+      "idealAnswer": "Lowering the probability threshold catches more positives (higher recall) at the expense of more false alarms (lower precision); raising it does the reverse. The ROC curve plots TPR vs FPR across all thresholds (optimistic under heavy imbalance), while PR-AUC focuses strictly on positive-class precision vs recall."
+    },
+    {
+      "id": "ml-9",
+      "topic": "MLOps basics",
+      "difficulty": "Intermediate",
+      "text": "How would you package and serve a trained scikit-learn model behind an API so predictions are reproducible in production?",
+      "timeLimitSec": 180,
+      "keyPoints": ["pipeline", "pickle", "fastapi", "docker", "version", "preprocessing"],
+      "idealAnswer": "Bundle preprocessing (encoders, scalers) and the estimator into a single Pipeline object, serialize with joblib/ONNX, log artifact/dependency versions (requirements.txt), wrap inference inside a FastAPI endpoint with Pydantic schema validation, and containerize with Docker for consistent deployment."
+    },
+    {
+      "id": "ml-10",
+      "topic": "Algorithms",
+      "difficulty": "Intermediate",
+      "text": "Compare L1 (Lasso) and L2 (Ridge) regularization mathematically and practically. When do you choose L1?",
+      "timeLimitSec": 180,
+      "keyPoints": ["sparse", "zero", "feature selection", "absolute", "squared", "weights"],
+      "idealAnswer": "L2 adds a penalty proportional to squared weights, shrinking correlated weights smoothly toward zero without eliminating them. L1 penalizes absolute weights, whose sharp corners drive weak feature weights to exact zero—making L1 ideal when you want automatic feature selection and sparse interpretable models."
+    },
+    {
+      "id": "ml-11",
+      "topic": "MLOps basics",
+      "difficulty": "Advanced",
+      "text": "Your deployed model's accuracy dropped silently two months after launch even though the API returns HTTP 200 OK. What happened and how do you monitor for it?",
+      "timeLimitSec": 180,
+      "keyPoints": ["data drift", "concept drift", "monitoring", "distribution", "retrain", "feedback"],
+      "idealAnswer": "The model likely suffers from data drift (input feature distributions shifted, e.g., user demographics changed) or concept drift (relationship between inputs and target changed). Monitor feature PSI/KS-drift metrics, track prediction confidence shifts, collect delayed ground-truth labels, and set automated alerting + scheduled retraining."
+    },
+    {
+      "id": "ml-12",
+      "topic": "Evaluation metrics",
+      "difficulty": "Advanced",
+      "text": "For a ranking/recommendation system (like showing top 5 internship matches), why are RMSE or binary accuracy poor metrics, and what would you use?",
+      "timeLimitSec": 180,
+      "keyPoints": ["order", "top k", "ndcg", "map", "mrr", "ctr"],
+      "idealAnswer": "Rankings care primarily about item ordering in the top slots rather than exact score magnitudes. Offline, evaluate using Precision@K, Recall@K, MRR, or NDCG@K (which weights higher positions more heavily). Online, verify via A/B tests measuring CTR, application conversion, and long-term retention."
+    },
+    {
+      "id": "ml-13",
+      "topic": "Feature engineering",
+      "difficulty": "Advanced",
+      "text": "How do you handle a dataset with 30% missing values across critical numerical and categorical columns?",
+      "timeLimitSec": 180,
+      "keyPoints": ["missingness", "mcar", "indicator", "imputation", "median", "tree"],
+      "idealAnswer": "First investigate why data is missing (MCAR vs MNAR—sometimes missingness itself is predictive). Add binary missing-indicator flags, impute numerical columns carefully using median/KNN/iterative imputer fit ONLY on training data, treat missing categories as an explicit 'Unknown' category, or leverage tree boosters like LightGBM/XGBoost that learn optimal missing-branch directions natively."
+    },
+    {
+      "id": "ml-14",
+      "topic": "Algorithms",
+      "difficulty": "Advanced",
+      "text": "How do you handle extreme class imbalance (100:1) when training a Gradient Boosted Decision Tree model?",
+      "timeLimitSec": 180,
+      "keyPoints": ["class weight", "scale_pos_weight", "smote", "threshold", "stratified", "calibration"],
+      "idealAnswer": "Use stratified k-fold CV, tune class weighting (`scale_pos_weight` in XGBoost or `class_weight='balanced'`) rather than blindly applying SMOTE everywhere, calibrate predicted probabilities (Platt scaling/isotonic regression) if probability estimates matter, and optimize the decision threshold for your business precision/recall cost."
+    },
+    {
+      "id": "ml-15",
+      "topic": "MLOps basics",
+      "difficulty": "Advanced",
+      "text": "Explain how an online/offline feature store solves training-serving skew.",
+      "timeLimitSec": 180,
+      "keyPoints": ["skew", "consistent", "batch", "low latency", "redis", "point in time"],
+      "idealAnswer": "Training-serving skew occurs when offline notebook transformations differ from real-time production feature code or leak future values. A feature store maintains one canonical feature definition pipeline populating both an offline store (historical point-in-time joins for training) and a low-latency online store (Redis/DynamoDB for millisecond serving)."
+    }
+  ],
+  "Data Scientist / Analyst": [
+    {
+      "id": "ds-1",
+      "topic": "SQL",
+      "difficulty": "Beginner",
+      "text": "What is the difference between WHERE and HAVING in SQL, and what order does SQL execute them in?",
+      "timeLimitSec": 180,
+      "keyPoints": ["rows", "groups", "aggregate", "group by", "before", "after"],
+      "idealAnswer": "WHERE filters individual rows before grouping (GROUP BY) occurs, so it cannot use aggregate functions like SUM or COUNT. HAVING filters grouped aggregates after GROUP BY runs. Execution order goes: FROM -> JOIN -> WHERE -> GROUP BY -> HAVING -> SELECT -> ORDER BY -> LIMIT."
+    },
+    {
+      "id": "ds-2",
+      "topic": "Statistics",
+      "difficulty": "Beginner",
+      "text": "When would you report the median instead of the mean for student placement packages or house prices?",
+      "timeLimitSec": 180,
+      "keyPoints": ["skewed", "outliers", "average", "middle", "distort", "robust"],
+      "idealAnswer": "The mean gets pulled heavily upward or downward by extreme outliers (e.g., one billionaire or one huge placement package skewing an entire batch average). For skewed distributions like salaries or property prices, the median represents the true typical value robustly."
+    },
+    {
+      "id": "ds-3",
+      "topic": "SQL",
+      "difficulty": "Beginner",
+      "text": "Explain INNER JOIN vs LEFT JOIN, and write/describe how to find users who never placed an order.",
+      "timeLimitSec": 180,
+      "keyPoints": ["matching", "null", "left table", "filter", "is null", "unmatched"],
+      "idealAnswer": "INNER JOIN keeps only rows matching in both tables. LEFT JOIN preserves all rows from the left table and fills unmatched right-table columns with NULL. To find users without orders, LEFT JOIN users to orders on user_id and filter `WHERE orders.id IS NULL`."
+    },
+    {
+      "id": "ds-4",
+      "topic": "pandas",
+      "difficulty": "Beginner",
+      "text": "In pandas, how do `.loc` and `.iloc` differ, and how do you handle duplicate or missing rows quickly?",
+      "timeLimitSec": 180,
+      "keyPoints": ["label", "integer", "position", "drop_duplicates", "fillna", "dropna"],
+      "idealAnswer": "`.loc` selects rows/columns by index/column labels (and includes end slices), while `.iloc` selects purely by 0-based integer positions. You can detect and clean missing or duplicate records with `isna().sum()`, `fillna()` / `dropna()`, and `drop_duplicates()`."
+    },
+    {
+      "id": "ds-5",
+      "topic": "Visualization",
+      "difficulty": "Beginner",
+      "text": "Which chart types would you choose to show: (a) daily signups over 6 months, (b) age distribution, and (c) feature correlation?",
+      "timeLimitSec": 180,
+      "keyPoints": ["line chart", "histogram", "scatter", "heatmap", "trend", "distribution"],
+      "idealAnswer": "Use a line chart for daily time-series signups to emphasize trend over time, a histogram (or boxplot) for age distribution across bins, and a scatter plot or correlation heatmap to inspect relationships between numerical variables."
+    },
+    {
+      "id": "ds-6",
+      "topic": "SQL",
+      "difficulty": "Intermediate",
+      "text": "How do SQL window functions (ROW_NUMBER, RANK, DENSE_RANK) differ when ranking top-3 highest salaries per department?",
+      "timeLimitSec": 180,
+      "keyPoints": ["partition by", "ties", "gap", "row_number", "dense_rank", "rank"],
+      "idealAnswer": "Using `PARTITION BY department ORDER BY salary DESC`: ROW_NUMBER assigns strictly unique sequential numbers (1,2,3) breaking ties arbitrarily; RANK gives ties the same rank but skips numbers after ties (1,1,3); DENSE_RANK gives ties the same rank without gaps (1,1,2)."
+    },
+    {
+      "id": "ds-7",
+      "topic": "Statistics",
+      "difficulty": "Intermediate",
+      "text": "What is a p-value in hypothesis testing, and what is the difference between Type I and Type II errors?",
+      "timeLimitSec": 180,
+      "keyPoints": ["null hypothesis", "false positive", "false negative", "alpha", "significance", "probability"],
+      "idealAnswer": "A p-value is the probability of observing results at least as extreme as yours assuming the null hypothesis is true. A Type I error (alpha, false positive) wrongly rejects a true null hypothesis; a Type II error (beta, false negative) fails to detect a real effect."
+    },
+    {
+      "id": "ds-8",
+      "topic": "Case thinking",
+      "difficulty": "Intermediate",
+      "text": "An edtech app notices daily resume uploads jumped 30% this week, but completed dashboard signups stayed flat. How do you investigate?",
+      "timeLimitSec": 180,
+      "keyPoints": ["funnel", "segment", "bug", "cohort", "traffic", "bot"],
+      "idealAnswer": "First verify tracking instrumentation and filter out bots/repeat retries by the same users. Next segment the spike by acquisition channel, device/browser, and geography, then examine step-by-step funnel conversion rates from upload -> preview -> signup modal to spot a broken redirect or new friction point."
+    },
+    {
+      "id": "ds-9",
+      "topic": "Python",
+      "difficulty": "Intermediate",
+      "text": "Why is vectorized NumPy/pandas arithmetic orders of magnitude faster than iterating row-by-row with `.iterrows()`?",
+      "timeLimitSec": 180,
+      "keyPoints": ["c", "contiguous", "memory", "loop", "overhead", "simd"],
+      "idealAnswer": "`.iterrows()` converts each row into a Python Series object and loops via slow dynamic Python bytecode. Vectorized NumPy/pandas operations operate over contiguous typed memory arrays in compiled C loops with SIMD optimizations, eliminating per-row boxing and interpreter overhead."
+    },
+    {
+      "id": "ds-10",
+      "topic": "Case thinking",
+      "difficulty": "Intermediate",
+      "text": "You are designing an A/B test for a new 'Upload Resume' button color/copy. How do you pick your sample size, randomization unit, and success metric?",
+      "timeLimitSec": 180,
+      "keyPoints": ["power", "mde", "user level", "guardrail", "conversion", "novelty"],
+      "idealAnswer": "Randomize by user_id (or visitor cookie) so a user sees a consistent experience, compute required sample size using baseline conversion, desired minimum detectable effect (MDE), alpha (0.05), and 80% power, track upload-completion rate as primary metric, and monitor latency/bounce rate as guardrails."
+    },
+    {
+      "id": "ds-11",
+      "topic": "Statistics",
+      "difficulty": "Advanced",
+      "text": "Explain Simpson's Paradox with a product analytics example and how it impacts cohort reporting.",
+      "timeLimitSec": 180,
+      "keyPoints": ["confounding", "aggregation", "segment", "reverses", "trend", "subgroup"],
+      "idealAnswer": "Simpson's Paradox happens when a trend visible across individual subgroups reverses when the groups are pooled together due to an imbalanced confounding variable (e.g., Feature B looks worse overall only because far more low-engagement new users received B, even though B beats A within both new and returning cohorts separately)."
+    },
+    {
+      "id": "ds-12",
+      "topic": "SQL",
+      "difficulty": "Advanced",
+      "text": "Describe how you would write a SQL query using CTEs to compute 7-day rolling active users or Day-7 user retention.",
+      "timeLimitSec": 180,
+      "keyPoints": ["cte", "cohort", "first seen", "date_diff", "join", "count distinct"],
+      "idealAnswer": "First use a CTE to find each user's signup/first_active_date (cohort date), join back to the user_events table on user_id, filter events where `event_date = cohort_date + INTERVAL '7 days'` (or bucket by day diff), and calculate `COUNT(DISTINCT retained_users) / COUNT(DISTINCT cohort_users)` per cohort."
+    },
+    {
+      "id": "ds-13",
+      "topic": "Case thinking",
+      "difficulty": "Advanced",
+      "text": "Your A/B test achieved p = 0.03 on day 2 after launching, so the PM wants to ship immediately. Why should you push back?",
+      "timeLimitSec": 180,
+      "keyPoints": ["peeking", "multiple testing", "novelty", "weekday", "sample size", "false positive"],
+      "idealAnswer": "Stopping early based on intermediate p-values ('peeking') inflates the false-positive rate far above 5%. Moreover, a 2-day run misses weekly seasonality (weekday vs weekend behavior) and novelty effects; wait until the pre-calculated sample size and minimum 1–2 full weekly cycles finish."
+    },
+    {
+      "id": "ds-14",
+      "topic": "Visualization",
+      "difficulty": "Advanced",
+      "text": "How do you avoid misleading executives with dashboards? Name three common visual pitfalls and how to fix them.",
+      "timeLimitSec": 180,
+      "keyPoints": ["axis", "zero", "correlation", "causation", "context", "dual axis"],
+      "idealAnswer": "Never truncate bar chart Y-axes (which exaggerates tiny diffs), avoid mismatched dual Y-axes that imply false correlations, always display denominator/sample sizes alongside percentages, and annotate major product releases or seasonality so correlation isn't mistaken for causation."
+    },
+    {
+      "id": "ds-15",
+      "topic": "Statistics",
+      "difficulty": "Advanced",
+      "text": "When randomized A/B testing isn't possible (e.g., launching a campus placement drive everywhere at once), how can you estimate causal impact?",
+      "timeLimitSec": 180,
+      "keyPoints": ["difference in differences", "propensity", "observational", "control", "parallel trends", "regression"],
+      "idealAnswer": "Use quasi-experimental observational methods: Difference-in-Differences (comparing treated vs similar unexposed control group before/after, verifying parallel pre-trends), Propensity Score Matching to balance covariates, or Interrupted Time Series when a sharp launch cutoff exists."
+    }
+  ],
+  "Full Stack Engineer": [
+    {
+      "id": "fs-1",
+      "topic": "JavaScript",
+      "difficulty": "Beginner",
+      "text": "Explain the difference between `let`, `const`, and `var` in JavaScript, including scope and hoisting behavior.",
+      "timeLimitSec": 180,
+      "keyPoints": ["block scope", "function scope", "redeclare", "reassign", "hoisting", "temporal dead zone"],
+      "idealAnswer": "`var` is function-scoped, hoisted with `undefined`, and allows redeclaration. `let` and `const` are block-scoped and sit in the Temporal Dead Zone before declaration; `let` permits reassignment while `const` prevents reassigning the binding (though objects/arrays remain mutable unless frozen)."
+    },
+    {
+      "id": "fs-2",
+      "topic": "React",
+      "difficulty": "Beginner",
+      "text": "What is the difference between props and state in React, and why do we never mutate state directly?",
+      "timeLimitSec": 180,
+      "keyPoints": ["read-only", "parent", "re-render", "immutable", "reference", "setter"],
+      "idealAnswer": "Props are read-only inputs passed down from parent to child components, while state is mutable data managed internally by a component. React detects updates via shallow reference comparisons in `setState`/`useState` setters; direct mutation skips re-renders and breaks UI synchronization."
+    },
+    {
+      "id": "fs-3",
+      "topic": "HTML",
+      "difficulty": "Beginner",
+      "text": "Why does semantic HTML (like `<main>`, `<nav>`, `<button>`, `<label>`) matter compared to putting `onClick` handlers on `<div>` tags?",
+      "timeLimitSec": 180,
+      "keyPoints": ["accessibility", "screen reader", "keyboard", "seo", "focus", "tab"],
+      "idealAnswer": "Semantic tags convey meaning natively to screen readers and search engines and give built-in keyboard navigation (Tab focus, Enter/Space activation on `<button>`). Using clickable `<div>` elements breaks keyboard accessibility and harms SEO unless extra ARIA roles and handlers are manually recreated."
+    },
+    {
+      "id": "fs-4",
+      "topic": "REST APIs",
+      "difficulty": "Beginner",
+      "text": "Explain the differences between GET, POST, PUT, PATCH, and DELETE HTTP methods and common status codes (200, 201, 400, 401, 404, 500).",
+      "timeLimitSec": 180,
+      "keyPoints": ["idempotent", "partial", "create", "status codes", "client error", "server error"],
+      "idealAnswer": "GET fetches resources (safe, idempotent); POST creates resources (201); PUT replaces an entire resource (idempotent); PATCH applies partial updates; DELETE removes resources. 2xx = success (200/201), 4xx = client errors (400 Bad Request, 401 Unauthorized, 404 Not Found), 500 = server failure."
+    },
+    {
+      "id": "fs-5",
+      "topic": "Databases",
+      "difficulty": "Beginner",
+      "text": "When would you choose a relational SQL database (PostgreSQL) vs a document NoSQL database (MongoDB) for a student web project?",
+      "timeLimitSec": 180,
+      "keyPoints": ["schema", "relations", "joins", "acid", "flexible", "scale"],
+      "idealAnswer": "Choose SQL (PostgreSQL) when data has clear relational links (users -> orders -> items), strict schema guarantees, complex joins, or ACID transactions. Choose NoSQL (MongoDB) for rapidly evolving unstructured payloads, nested self-contained documents, or high-throughput horizontal sharding."
+    },
+    {
+      "id": "fs-6",
+      "topic": "Node.js",
+      "difficulty": "Intermediate",
+      "text": "How does Node.js handle thousands of concurrent API requests on a single JavaScript thread? What blocks it?",
+      "timeLimitSec": 180,
+      "keyPoints": ["event loop", "non-blocking", "async", "libuv", "cpu bound", "thread pool"],
+      "idealAnswer": "Node.js uses an event loop (backed by libuv) to offload non-blocking I/O (network calls, DB queries, filesystem ops) and queue callbacks upon completion, freeing the main thread for incoming requests. Heavy synchronous CPU work (like giant loops, `JSON.parse` on huge files, or sync crypto) blocks the event loop for all users."
+    },
+    {
+      "id": "fs-7",
+      "topic": "REST APIs",
+      "difficulty": "Intermediate",
+      "text": "Explain how CORS works in browsers. Why do API calls sometimes work in Postman but fail in React?",
+      "timeLimitSec": 180,
+      "keyPoints": ["origin", "browser", "preflight", "options", "header", "server"],
+      "idealAnswer": "CORS is a browser security enforcement blocking cross-origin requests unless the server explicitly responds with `Access-Control-Allow-Origin` and allowed methods/headers (including responding cleanly to `OPTIONS` preflight requests). Postman does not run browser origin checks, which is why APIs work there even with missing CORS headers."
+    },
+    {
+      "id": "fs-8",
+      "topic": "React",
+      "difficulty": "Intermediate",
+      "text": "Explain React's `useEffect` dependency array and cleanup function. What happens if you fetch API data without cleanup?",
+      "timeLimitSec": 180,
+      "keyPoints": ["dependencies", "mount", "unmount", "abortcontroller", "race condition", "memory leak"],
+      "idealAnswer": "The dependency array tells React when to re-run the effect (empty `[]` runs once on mount; values re-run on change). The returned cleanup runs before the next effect or unmount; without canceling in-flight requests (via AbortController) or ignoring stale flags, rapid changes cause race conditions where older responses overwrite newer ones."
+    },
+    {
+      "id": "fs-9",
+      "topic": "Databases",
+      "difficulty": "Intermediate",
+      "text": "Why do database indexes speed up SELECT queries, and why shouldn't you index every column in a table?",
+      "timeLimitSec": 180,
+      "keyPoints": ["b-tree", "full table scan", "write overhead", "storage", "insert", "update"],
+      "idealAnswer": "Indexes store sorted B-Tree (or hash) pointers to table rows, turning O(N) full table scans into O(log N) lookups. However, every INSERT, UPDATE, or DELETE must also update all associated indexes and consumes extra disk/RAM, slowing write-heavy workloads if over-indexed."
+    },
+    {
+      "id": "fs-10",
+      "topic": "CSS",
+      "difficulty": "Intermediate",
+      "text": "Compare CSS Flexbox vs CSS Grid. When would you reach for each in building a dashboard?",
+      "timeLimitSec": 180,
+      "keyPoints": ["1d", "2d", "rows", "columns", "alignment", "layout"],
+      "idealAnswer": "Flexbox is 1-dimensional—ideal for aligning items along a single row or column like navbars, pill badges, and card headers. CSS Grid is 2-dimensional—simultaneously controlling rows and columns, making it ideal for full dashboard layouts, responsive card grids, and asymmetric sidebar shells."
+    },
+    {
+      "id": "fs-11",
+      "topic": "Databases",
+      "difficulty": "Advanced",
+      "text": "What is the N+1 query problem when fetching users and their resume scores, and how do you eliminate it?",
+      "timeLimitSec": 180,
+      "keyPoints": ["loop", "join", "eager loading", "in clause", "batching", "latency"],
+      "idealAnswer": "N+1 happens when 1 query fetches N parent records and a loop runs N extra queries (one per parent) to fetch children, multiplying DB round trips. Fix it using SQL JOINs, ORM eager loading (`include`/batch `WHERE user_id IN (...)`), or DataLoader batching."
+    },
+    {
+      "id": "fs-12",
+      "topic": "REST APIs",
+      "difficulty": "Advanced",
+      "text": "Walk through JWT vs HTTP-only session cookies for full-stack authentication, including XSS and CSRF trade-offs.",
+      "timeLimitSec": 180,
+      "keyPoints": ["stateless", "xss", "csrf", "httponly", "localstorage", "revocation"],
+      "idealAnswer": "Storing JWTs in `localStorage` exposes them to any XSS script, and pure stateless JWTs are hard to revoke immediately before expiry. HTTP-only, Secure, `SameSite` cookies cannot be read via JS (protecting against XSS token theft) while `SameSite` + CSRF tokens mitigate CSRF, pairing well with server session revocation or short-lived JWT + refresh rotation."
+    },
+    {
+      "id": "fs-13",
+      "topic": "React",
+      "difficulty": "Advanced",
+      "text": "How would you implement optimistic UI updates when a student renames or saves a roadmap, including rollback on failure?",
+      "timeLimitSec": 180,
+      "keyPoints": ["optimistic", "previous state", "rollback", "catch", "error", "instant"],
+      "idealAnswer": "Snapshot the current React state before calling the API, update the UI state immediately so the user experiences zero lag, send the async PATCH/POST request, and inside `catch`/error handling restore the previous snapshot while displaying an error toast so local UI stays truthful to server state."
+    },
+    {
+      "id": "fs-14",
+      "topic": "Node.js",
+      "difficulty": "Advanced",
+      "text": "Design rate limiting and input validation for a public AI endpoint in Node/Express or serverless functions.",
+      "timeLimitSec": 180,
+      "keyPoints": ["token bucket", "sliding window", "redis", "schema", "429", "sanitize"],
+      "idealAnswer": "Validate and cap request payload sizes first using Zod schemas (rejecting malformed inputs early with 400). Enforce rate limits via sliding-window or token-bucket counters keyed by authenticated userId/IP in Redis (or memory per instance), returning HTTP 429 with `Retry-After` headers before expensive AI API calls execute."
+    },
+    {
+      "id": "fs-15",
+      "topic": "Full Stack",
+      "difficulty": "Intermediate",
+      "text": "What happens in a full-stack web app from the moment a user submits a form in React to storing data in Postgres and returning a response?",
+      "timeLimitSec": 180,
+      "keyPoints": ["preventDefault", "fetch", "json", "validation", "sql", "status"],
+      "idealAnswer": "React handles `onSubmit` with `e.preventDefault()`, validates client input, and sends an async `fetch` POST with JSON & auth headers. The backend checks auth/rate limits, parses & validates fields, runs parameterized SQL (preventing injection), persists rows, and returns HTTP 201 JSON which React renders."
+    }
+  ],
+  "Frontend Engineer": [
+    {
+      "id": "fe-1",
+      "topic": "JavaScript",
+      "difficulty": "Beginner",
+      "text": "Explain event bubbling and event delegation in the DOM. Why is event delegation useful for large lists?",
+      "timeLimitSec": 180,
+      "keyPoints": ["bubble", "parent", "target", "listener", "memory", "dynamic"],
+      "idealAnswer": "Event bubbling propagates events from the innermost clicked target up through ancestor elements. Event delegation attaches one single listener to a parent container (checking `e.target`) instead of 100 individual child listeners—saving memory and automatically handling dynamically added items."
+    },
+    {
+      "id": "fe-2",
+      "topic": "CSS",
+      "difficulty": "Beginner",
+      "text": "Explain the CSS Box Model (`content`, `padding`, `border`, `margin`) and what `box-sizing: border-box` changes.",
+      "timeLimitSec": 180,
+      "keyPoints": ["width", "padding", "border", "margin", "border-box", "content-box"],
+      "idealAnswer": "Every CSS element consists of content, inner padding, border, and outer margin. By default (`content-box`), `width: 200px` excludes padding and border, causing boxes to grow unexpectedly; `box-sizing: border-box` includes content, padding, and border inside the declared width/height."
+    },
+    {
+      "id": "fe-3",
+      "topic": "React",
+      "difficulty": "Beginner",
+      "text": "Why does React require a unique `key` prop when rendering arrays, and why is using the array `index` risky?",
+      "timeLimitSec": 180,
+      "keyPoints": ["reconciliation", "identity", "reorder", "insert", "state", "stable"],
+      "idealAnswer": "React uses `key` during reconciliation to track which list items were added, removed, or reordered. Using array indexes breaks when items are inserted, deleted, or sorted because indexes shift, causing React to reuse mismatched component state and DOM nodes; prefer stable unique IDs."
+    },
+    {
+      "id": "fe-4",
+      "topic": "JavaScript",
+      "difficulty": "Beginner",
+      "text": "What is a closure in JavaScript? Give a practical UI use case where closures naturally appear.",
+      "timeLimitSec": 180,
+      "keyPoints": ["lexical scope", "outer function", "remember", "private", "debounce", "handler"],
+      "idealAnswer": "A closure happens when an inner function retains access to variables from its outer lexical scope even after the outer function has returned. Practically, closures power debouncing/throttling timers, event handlers remembering item IDs, and encapsulating private module state."
+    },
+    {
+      "id": "fe-5",
+      "topic": "Accessibility",
+      "difficulty": "Beginner",
+      "text": "List four essential accessibility (a11y) practices every frontend engineer should follow when building interactive forms and modals.",
+      "timeLimitSec": 180,
+      "keyPoints": ["label", "keyboard", "contrast", "focus", "aria", "alt"],
+      "idealAnswer": "Always pair inputs with explicit `<label>` elements, support full keyboard navigation with visible focus rings, maintain WCAG AA color contrast, manage focus trapping + Escape-to-close on modals with semantic ARIA roles (`aria-modal`, `aria-label`), and add `alt` text for meaningful images."
+    },
+    {
+      "id": "fe-6",
+      "topic": "JavaScript",
+      "difficulty": "Intermediate",
+      "text": "Explain the JavaScript Event Loop, Call Stack, Microtask Queue (`Promise.then`), and Macrotask Queue (`setTimeout`).",
+      "timeLimitSec": 180,
+      "keyPoints": ["call stack", "microtask", "macrotask", "promise", "settimeout", "priority"],
+      "idealAnswer": "Synchronous code executes on the Call Stack. Once empty, the Event Loop drains ALL pending callbacks in the Microtask Queue (Promises, `queueMicrotask`) before picking a single callback from the Macrotask Queue (`setTimeout`, DOM events), then repeats—explaining why resolved Promises always log before `setTimeout(0)`."
+    },
+    {
+      "id": "fe-7",
+      "topic": "Performance",
+      "difficulty": "Intermediate",
+      "text": "Explain `debounce` vs `throttle` with real examples from a web application.",
+      "timeLimitSec": 180,
+      "keyPoints": ["delay", "wait", "interval", "search", "scroll", "resize"],
+      "idealAnswer": "Debounce delays execution until a quiet period passes after the last event—ideal for search input autocomplete so API calls fire once the user pauses typing. Throttle guarantees execution at most once every N milliseconds—ideal for continuous scroll progress or window resize tracking."
+    },
+    {
+      "id": "fe-8",
+      "topic": "Browser basics",
+      "difficulty": "Intermediate",
+      "text": "Walk through the browser's Critical Rendering Path from receiving HTML to pixels appearing on screen.",
+      "timeLimitSec": 180,
+      "keyPoints": ["dom", "cssom", "render tree", "layout", "paint", "composite"],
+      "idealAnswer": "The browser parses HTML into the DOM and CSS into the CSSOM, combines visible nodes into the Render Tree, calculates exact geometry during Layout (reflow), fills pixels/layers during Paint, and merges GPU layers in Compositing. Animating `transform`/`opacity` skips Layout & Paint for smooth 60fps animations."
+    },
+    {
+      "id": "fe-9",
+      "topic": "React",
+      "difficulty": "Intermediate",
+      "text": "How do `useMemo`, `useCallback`, and `React.memo` help performance, and why shouldn't you wrap everything with them blindly?",
+      "timeLimitSec": 180,
+      "keyPoints": ["memoize", "reference equality", "re-render", "overhead", "expensive", "shallow"],
+      "idealAnswer": "`React.memo` skips child re-renders if props are shallowly equal; `useMemo` caches expensive derived values; `useCallback` preserves function reference stability across renders. Overusing them everywhere adds memory and dependency-comparison overhead without benefit unless profiling shows expensive re-renders."
+    },
+    {
+      "id": "fe-10",
+      "topic": "Browser basics",
+      "difficulty": "Intermediate",
+      "text": "Compare `localStorage`, `sessionStorage`, and HTTP Cookies for storing client-side data.",
+      "timeLimitSec": 180,
+      "keyPoints": ["persistence", "tab", "http", "size", "expiry", "httponly"],
+      "idealAnswer": "`localStorage` (~5–10MB) persists across browser restarts per origin and stays client-only. `sessionStorage` is isolated per browser tab and clears when closed. Cookies (~4KB) support expiration times, automatic transmission on HTTP requests, and `HttpOnly`/`Secure` flags crucial for auth."
+    },
+    {
+      "id": "fe-11",
+      "topic": "Performance",
+      "difficulty": "Advanced",
+      "text": "What are Core Web Vitals (LCP, INP, CLS), and how do you diagnose and fix a poor score in each?",
+      "timeLimitSec": 180,
+      "keyPoints": ["lcp", "inp", "cls", "layout shift", "hydration", "bundle"],
+      "idealAnswer": "LCP measures main content load speed (fix via image optimization, preloading hero assets, code-splitting). INP measures input responsiveness (break up long JS main-thread tasks, reduce bundle size). CLS measures unexpected layout jumps (reserve explicit width/height on images, fonts, and async banners)."
+    },
+    {
+      "id": "fe-12",
+      "topic": "Performance",
+      "difficulty": "Advanced",
+      "text": "Your Vite/React production bundle hit 1.5MB and slows down initial page load on mobile 3G. How do you cut bundle size?",
+      "timeLimitSec": 180,
+      "keyPoints": ["code splitting", "lazy", "suspense", "tree shaking", "visualizer", "dynamic import"],
+      "idealAnswer": "Analyze chunks with rollup-plugin-visualizer, apply route-level code splitting via `React.lazy()` + `Suspense`, dynamically import heavy chart/PDF libraries only when visited, rely on ES modules for tree-shaking rather than full-library imports, and compress assets via Brotli/Gzip + CDN caching."
+    },
+    {
+      "id": "fe-13",
+      "topic": "React",
+      "difficulty": "Advanced",
+      "text": "What is a stale closure bug inside React hooks (`useEffect` or `setInterval`), and how do you solve it cleanly?",
+      "timeLimitSec": 180,
+      "keyPoints": ["interval", "functional update", "ref", "dependency", "stale", "capture"],
+      "idealAnswer": "An effect capturing initial state inside a `setInterval` without re-subscribing reads outdated values forever ('stale closure'). Fix it using functional state updates (`setTime(prev => prev - 1)`), adding missing dependencies with clean teardown, or storing the latest mutable value/callback inside a `useRef`."
+    },
+    {
+      "id": "fe-14",
+      "topic": "Accessibility",
+      "difficulty": "Advanced",
+      "text": "How do you engineer an accessible custom searchable dropdown (like a role selector) so keyboard-only and screen-reader users have no friction?",
+      "timeLimitSec": 180,
+      "keyPoints": ["combobox", "aria-expanded", "arrow keys", "escape", "focus", "active descendant"],
+      "idealAnswer": "Apply ARIA `combobox`/`listbox`/`option` roles, expose `aria-expanded` and `aria-selected`, manage ArrowUp/ArrowDown navigation, Enter to select, Escape to close and restore trigger focus, close cleanly on outside clicks, and announce live filter counts to screen readers."
+    },
+    {
+      "id": "fe-15",
+      "topic": "CSS",
+      "difficulty": "Intermediate",
+      "text": "Explain CSS Specificity and stacking contexts (`z-index`). Why does `z-index: 9999` sometimes fail to bring a modal above another element?",
+      "timeLimitSec": 180,
+      "keyPoints": ["inline", "id", "class", "stacking context", "transform", "opacity"],
+      "idealAnswer": "Specificity ranks selectors (inline > ID > class/attribute > element). A high `z-index` fails when the element sits inside a parent that created a lower stacking context (e.g., via `transform`, `opacity < 1`, `filter`, or `backdrop-filter`). Rendering modals via a React Portal at `document.body` escapes trapped stacking contexts."
+    }
+  ],
+  "Backend Engineer": [
+    {
+      "id": "be-1",
+      "topic": "APIs",
+      "difficulty": "Beginner",
+      "text": "What makes a REST API RESTful, and how should URLs, HTTP verbs, and status codes be structured for a 'roadmaps' resource?",
+      "timeLimitSec": 180,
+      "keyPoints": ["stateless", "nouns", "methods", "200", "201", "404"],
+      "idealAnswer": "REST uses stateless client-server requests, uniform resource nouns (`/api/roadmaps`, `/api/roadmaps/:id`), standard HTTP methods (GET/POST/PUT/PATCH/DELETE), and accurate status codes (200 OK, 201 Created, 400 Bad Request, 401/403 Auth, 404 Not Found)."
+    },
+    {
+      "id": "be-2",
+      "topic": "Databases",
+      "difficulty": "Beginner",
+      "text": "What are ACID properties in a database transaction, and give an example where lacking transactions causes a bug?",
+      "timeLimitSec": 180,
+      "keyPoints": ["atomicity", "consistency", "isolation", "durability", "rollback", "payment"],
+      "idealAnswer": "ACID stands for Atomicity (all-or-nothing), Consistency (valid constraints preserved), Isolation (concurrent transactions don't corrupt each other), and Durability (committed writes survive crashes). In wallet transfers, debiting account A without crediting account B after a crash leaves money lost unless wrapped in one atomic transaction."
+    },
+    {
+      "id": "be-3",
+      "topic": "Authentication",
+      "difficulty": "Beginner",
+      "text": "Compare Authentication (AuthN) vs Authorization (AuthZ), and explain why passwords must be salted and hashed with bcrypt/Argon2 instead of SHA-256.",
+      "timeLimitSec": 180,
+      "keyPoints": ["identity", "permissions", "salt", "slow", "bcrypt", "rainbow table"],
+      "idealAnswer": "Authentication verifies who you are (login); Authorization checks what you can access (roles/ownership). General hashes like SHA-256 are designed to be ultra-fast on GPUs, enabling rapid brute force; adaptive slow hashes like bcrypt or Argon2id combined with per-user salts thwart rainbow tables and GPU cracking."
+    },
+    {
+      "id": "be-4",
+      "topic": "Databases",
+      "difficulty": "Beginner",
+      "text": "What is SQL Injection, and how do parameterized queries / prepared statements completely stop it?",
+      "timeLimitSec": 180,
+      "keyPoints": ["concatenate", "parameterized", "bind", "data", "code", "escape"],
+      "idealAnswer": "SQL injection happens when raw user strings are concatenated directly into SQL queries, letting attackers alter query syntax (e.g., `' OR 1=1--`). Prepared statements send the SQL template and parameter bindings separately so the DB engine treats user input strictly as literal data, never executable SQL commands."
+    },
+    {
+      "id": "be-5",
+      "topic": "Caching",
+      "difficulty": "Beginner",
+      "text": "Why do backends use Redis caching in front of PostgreSQL, and what does the Cache-Aside pattern look like?",
+      "timeLimitSec": 180,
+      "keyPoints": ["in-memory", "ttl", "hit", "miss", "latency", "invalidate"],
+      "idealAnswer": "Redis stores hot data in RAM for sub-millisecond reads, reducing load and latency on disk-backed Postgres. In Cache-Aside, the API checks Redis first: on a hit, return immediately; on a miss, query Postgres, store the result in Redis with a TTL, and return—invalidating/updating cache when writes happen."
+    },
+    {
+      "id": "be-6",
+      "topic": "APIs",
+      "difficulty": "Intermediate",
+      "text": "Compare Offset-based pagination (`LIMIT/OFFSET`) vs Cursor-based pagination. When does `OFFSET` become slow and buggy?",
+      "timeLimitSec": 180,
+      "keyPoints": ["scan", "deep page", "duplicates", "cursor", "index", "created_at"],
+      "idealAnswer": "`LIMIT/OFFSET` forces the database to scan and discard all skipped rows, degrading linearly at large offsets, and causes duplicate/skipped items if new rows arrive between page loads. Cursor pagination (`WHERE id < last_id LIMIT 20`) leverages indexes for constant O(log N) lookups and stable feeds."
+    },
+    {
+      "id": "be-7",
+      "topic": "Authentication",
+      "difficulty": "Intermediate",
+      "text": "How does a JWT token work internally (Header, Payload, Signature), and why must you never store secrets in the payload?",
+      "timeLimitSec": 180,
+      "keyPoints": ["base64", "encoded", "encrypted", "signature", "verify", "tamper"],
+      "idealAnswer": "A JWT has a Base64Url-encoded Header, Payload claims, and HMAC/RSA Signature. Note that Base64 is readable encoding, NOT encryption—anyone can decode the payload, so secrets/PII must stay out. The server uses its secret/public key solely to verify that nobody tampered with the payload."
+    },
+    {
+      "id": "be-8",
+      "topic": "Scalability basics",
+      "difficulty": "Intermediate",
+      "text": "Explain vertical scaling vs horizontal scaling. What stateless backend habits are required before adding a Load Balancer and multiple servers?",
+      "timeLimitSec": 180,
+      "keyPoints": ["stateless", "memory", "session", "redis", "s3", "load balancer"],
+      "idealAnswer": "Vertical scaling upgrades CPU/RAM on one machine (hits hardware limits); horizontal scaling runs multiple server instances behind a Load Balancer. To scale horizontally cleanly, keep app servers stateless—move sessions/rate-limits out of local RAM into Redis and user uploads out of local disk into S3/object storage."
+    },
+    {
+      "id": "be-9",
+      "topic": "APIs",
+      "difficulty": "Intermediate",
+      "text": "What does idempotency mean for a payment or booking POST endpoint, and how do you implement an Idempotency-Key?",
+      "timeLimitSec": 180,
+      "keyPoints": ["retry", "duplicate", "key", "cache", "unique constraint", "same result"],
+      "idealAnswer": "Idempotency guarantees that retrying the same request after a network timeout performs the action only once instead of double-charging a user. Clients send a unique UUID `Idempotency-Key` header; the server checks/locks that key in Redis/DB, returns the stored response on retries, and executes normally only on the first key."
+    },
+    {
+      "id": "be-10",
+      "topic": "Caching",
+      "difficulty": "Intermediate",
+      "text": "What is cache invalidation, and describe a cache stampede (thundering herd) and how you prevent it?",
+      "timeLimitSec": 180,
+      "keyPoints": ["expire", "concurrent", "mutex", "lock", "jitter", "stale"],
+      "idealAnswer": "A cache stampede happens when a heavily accessed key expires and hundreds of concurrent requests simultaneously miss cache and hammer the database. Mitigate it via distributed mutex locks (only one worker refreshes while others wait/read stale), staggered TTL jitter, or proactive background warming."
+    },
+    {
+      "id": "be-11",
+      "topic": "Scalability basics",
+      "difficulty": "Advanced",
+      "text": "Your mock interview API takes 6 seconds when calling an LLM and generating PDFs. How do you redesign it using message queues and background workers?",
+      "timeLimitSec": 180,
+      "keyPoints": ["async", "queue", "worker", "202 accepted", "polling", "retry"],
+      "idealAnswer": "Instead of holding HTTP connections open, enqueue a job (`SQS/BullMQ/RabbitMQ`) with an ID and immediately return HTTP `202 Accepted`. Background worker pools pull jobs, run retries/DLQ on failures, update status in DB, and notify the client via WebSockets/SSE or short polling."
+    },
+    {
+      "id": "be-12",
+      "topic": "Databases",
+      "difficulty": "Advanced",
+      "text": "Compare Read Replicas vs Database Sharding. When is read replication enough, and why is sharding avoided until strictly needed?",
+      "timeLimitSec": 180,
+      "keyPoints": ["replication", "read heavy", "write bottleneck", "partition", "cross-shard", "joins"],
+      "idealAnswer": "Read replicas asynchronously copy writes to extra nodes to scale read-heavy apps while writes stay on one primary. Sharding splits data across multiple primaries to scale writes and storage, but breaks cross-shard JOINs/ACID transactions and adds resharding complexity—so tune queries, cache, and use read replicas first."
+    },
+    {
+      "id": "be-13",
+      "topic": "APIs",
+      "difficulty": "Advanced",
+      "text": "How do the Circuit Breaker pattern and exponential backoff with jitter protect microservices when an upstream AI API degrades?",
+      "timeLimitSec": 180,
+      "keyPoints": ["fail fast", "half-open", "timeout", "jitter", "cascade", "retry"],
+      "idealAnswer": "Without protection, slow upstream timeouts tie up all threads and retry storms worsen outages. Exponential backoff + random jitter spreads retries out. A Circuit Breaker trips open after error thresholds to fail fast locally (or return fallback responses), then tests recovery cautiously in a half-open state."
+    },
+    {
+      "id": "be-14",
+      "topic": "Scalability basics",
+      "difficulty": "Advanced",
+      "text": "How do you prevent race conditions when two concurrent requests try to decrement the last remaining free interview credit for a user?",
+      "timeLimitSec": 180,
+      "keyPoints": ["atomic", "select for update", "optimistic locking", "constraint", "transaction", "version"],
+      "idealAnswer": "Reading `credits = 1` in app code and then updating is unsafe under concurrency. Handle it atomically in the DB using conditional update (`UPDATE ... SET credits = credits - 1 WHERE user_id = $1 AND credits > 0`), pessimistic `SELECT ... FOR UPDATE` inside a transaction, or optimistic locking with a `version` column."
+    },
+    {
+      "id": "be-15",
+      "topic": "Authentication",
+      "difficulty": "Intermediate",
+      "text": "What is Row-Level Security (RLS) in PostgreSQL/Supabase, and why is it safer than relying only on frontend filters?",
+      "timeLimitSec": 180,
+      "keyPoints": ["policy", "auth.uid", "database", "direct api", "tenant", "enforcement"],
+      "idealAnswer": "Frontend checks can be bypassed by crafting direct API requests with `curl`. RLS enforces authorization rules directly inside PostgreSQL on every row read/written (`user_id = auth.uid()`), guaranteeing multi-tenant data isolation even if client requests are modified."
+    }
+  ],
+  "Mobile App Engineer": [
+    {
+      "id": "mob-1",
+      "topic": "App lifecycle",
+      "difficulty": "Beginner",
+      "text": "Walk through the Android Activity lifecycle (`onCreate`, `onStart`, `onResume`, `onPause`, `onStop`, `onDestroy`) and when you save transient user input.",
+      "timeLimitSec": 180,
+      "keyPoints": ["oncreate", "onresume", "onpause", "onstop", "configuration change", "viewmodel"],
+      "idealAnswer": "`onCreate` initializes layout/bindings; `onStart` makes the screen visible; `onResume` brings it to active foreground focus. `onPause`/`onStop` run when switching away or minimizing (save drafts cleanly here), and `ViewModel` / `onSaveInstanceState` preserves UI state across screen rotations."
+    },
+    {
+      "id": "mob-2",
+      "topic": "Flutter or React Native",
+      "difficulty": "Beginner",
+      "text": "In Flutter (or React Native), compare StatelessWidget vs StatefulWidget (or Stateless vs Stateful components) and when `build` / render runs.",
+      "timeLimitSec": 180,
+      "keyPoints": ["immutable", "state", "setstate", "rebuild", "props", "lifecycle"],
+      "idealAnswer": "Stateless widgets hold immutable configuration passed via parent constructor and only rebuild when parent inputs change. Stateful widgets hold mutable internal `State`; calling `setState()` marks the subtree dirty so Flutter/React Native reconciles and updates changed UI efficiently."
+    },
+    {
+      "id": "mob-3",
+      "topic": "Android or iOS basics",
+      "difficulty": "Beginner",
+      "text": "Why does performing a network request or heavy JSON parsing directly on the mobile UI/Main thread cause ANRs or dropped frames?",
+      "timeLimitSec": 180,
+      "keyPoints": ["main thread", "16ms", "anr", "freeze", "background", "coroutines"],
+      "idealAnswer": "Mobile screens refresh at 60–120Hz (leaving only ~8–16ms per frame). Blocking the Main Thread with synchronous network/DB work drops frames, freezes touch handling, and triggers Android ANR dialogs; run I/O off the main thread using Kotlin Coroutines, Swift async/await, or JS background promises."
+    },
+    {
+      "id": "mob-4",
+      "topic": "Android or iOS basics",
+      "difficulty": "Beginner",
+      "text": "How do you safely render a list of 1,000 items in mobile apps (`RecyclerView`/LazyColumn, `UITableView`, `FlatList`, `ListView.builder`) without running out of RAM?",
+      "timeLimitSec": 180,
+      "keyPoints": ["recycle", "viewport", "lazy", "viewholder", "memory", "scroll"],
+      "idealAnswer": "Naive ScrollViews inflate all 1,000 offscreen views upfront, exhausting memory. Virtualized list components (`RecyclerView`, `LazyColumn`, `ListView.builder`, `FlatList`) inflate and bind only the visible viewport items plus a tiny buffer, recycling offscreen rows during scroll."
+    },
+    {
+      "id": "mob-5",
+      "topic": "Flutter or React Native",
+      "difficulty": "Beginner",
+      "text": "Compare cross-platform frameworks (Flutter / React Native) vs native Android (Kotlin) & iOS (Swift). When would a startup pick each?",
+      "timeLimitSec": 180,
+      "keyPoints": ["codebase", "team", "performance", "native apis", "speed", "ui consistency"],
+      "idealAnswer": "Flutter and React Native share ~80–95% codebase across Android and iOS, doubling startup shipping velocity and unifying UI consistency. Go strictly Native (Kotlin/Swift) when apps demand heavy AR/3D graphics, deep hardware/Bluetooth integration, ultra-low-level OS features, or zero framework overhead."
+    },
+    {
+      "id": "mob-6",
+      "topic": "Android or iOS basics",
+      "difficulty": "Intermediate",
+      "text": "Explain MVVM architecture in mobile development. Why shouldn't Activities/Views hold direct Retrofit API calls or SQLite queries?",
+      "timeLimitSec": 180,
+      "keyPoints": ["separation", "viewmodel", "lifecycle", "testing", "repository", "rotation"],
+      "idealAnswer": "Putting API/DB logic in Views creates massive un-testable classes and triggers duplicate calls or memory leaks across screen rotations. MVVM isolates UI rendering in View, exposes lifecycle-safe observable state in ViewModel (surviving config changes), and centralizes data/cache strategies inside a Repository layer."
+    },
+    {
+      "id": "mob-7",
+      "topic": "App lifecycle",
+      "difficulty": "Intermediate",
+      "text": "How do you securely store JWT auth tokens and sensitive user data on Android or iOS instead of plain `SharedPreferences` or `AsyncStorage`?",
+      "timeLimitSec": 180,
+      "keyPoints": ["keystore", "keychain", "encrypted", "sharedpreferences", "plain text", "rooted"],
+      "idealAnswer": "Unencrypted `SharedPreferences`/`AsyncStorage` write plain text XML/JSON files accessible on rooted devices or backups. Always store tokens inside hardware-backed encrypted storage: `EncryptedSharedPreferences` / Android Keystore on Android, `Keychain` on iOS, or `expo-secure-store` / `flutter_secure_storage`."
+    },
+    {
+      "id": "mob-8",
+      "topic": "Flutter or React Native",
+      "difficulty": "Intermediate",
+      "text": "Explain how React Native's old Bridge differs from its New Architecture (JSI / Fabric), OR how Flutter renders pixels with Skia/Impeller.",
+      "timeLimitSec": 180,
+      "keyPoints": ["json", "asynchronous", "jsi", "synchronous", "canvas", "60fps"],
+      "idealAnswer": "React Native's legacy Bridge serialized async JSON messages between JS and native threads, causing scroll lag; the New Architecture (JSI + TurboModules + Fabric) allows synchronous C++ memory sharing. Flutter bypasses OEM widgets entirely and compiles Dart to machine code drawing directly on a Skia/Impeller GPU canvas."
+    },
+    {
+      "id": "mob-9",
+      "topic": "Android or iOS basics",
+      "difficulty": "Intermediate",
+      "text": "How do you support offline-first caching cleanly in a mobile app when a student loses campus Wi-Fi mid-session?",
+      "timeLimitSec": 180,
+      "keyPoints": ["local database", "room", "sqlite", "sync", "queue", "single source of truth"],
+      "idealAnswer": "Make local persistence (Room/SQLite/CoreData/Hive) the UI's Single Source of Truth: render cached data instantly, fetch network updates in background to overwrite cache, and store user offline actions in a sync queue (e.g., WorkManager / BackgroundTasks) that flushes automatically when connectivity returns."
+    },
+    {
+      "id": "mob-10",
+      "topic": "App lifecycle",
+      "difficulty": "Intermediate",
+      "text": "What causes memory leaks in mobile apps (Android Context leaks, iOS retain cycles, uncleaned listeners) and how do you find them?",
+      "timeLimitSec": 180,
+      "keyPoints": ["context", "weak", "retain cycle", "profiler", "leakcanary", "observer"],
+      "idealAnswer": "Common leaks come from storing Activity Context in static singletons, strong `[self]` closures creating iOS ARC retain cycles (`[weak self]` fixes), and forgetting to unregister listeners/streams. Diagnose using LeakCanary, Android Studio Memory Profiler, or Xcode Instruments Leaks."
+    },
+    {
+      "id": "mob-11",
+      "topic": "App lifecycle",
+      "difficulty": "Advanced",
+      "text": "Design deep linking (Universal Links / App Links) and push notification routing when the app is killed vs already open in background.",
+      "timeLimitSec": 180,
+      "keyPoints": ["intent", "assetlinks", "apple-app-site-association", "cold start", "navigation stack", "auth"],
+      "idealAnswer": "Verify domain ownership via `.well-known/assetlinks.json` (Android) and `apple-app-site-association` (iOS). Handle both cold starts (parse initial URL after splash/auth completes without crashing navigation backstack) and warm background transitions (`onNewIntent` / `onOpenURL`) routing safely to the target screen."
+    },
+    {
+      "id": "mob-12",
+      "topic": "Flutter or React Native",
+      "difficulty": "Advanced",
+      "text": "How do you keep cold app startup time under 1.5 seconds and reduce APK/IPA download size?",
+      "timeLimitSec": 180,
+      "keyPoints": ["aab", "split", "proguard", "r8", "lazy", "splash"],
+      "idealAnswer": "Shrink release binaries with R8/ProGuard code shrinking, WebP/vector images, and Android App Bundles (AAB) splitting APKs per CPU ABI. Speed up startup by deferring heavy SDK initializations off `Application.onCreate()`, using baseline profiles, and rendering first frames immediately."
+    },
+    {
+      "id": "mob-13",
+      "topic": "Android or iOS basics",
+      "difficulty": "Advanced",
+      "text": "Explain how background location tracking or battery-efficient sync works while obeying Android Doze mode and iOS background execution limits.",
+      "timeLimitSec": 180,
+      "keyPoints": ["workmanager", "doze", "battery", "foreground service", "constraints", "coalesce"],
+      "idealAnswer": "Aggressive background polling drains battery and gets killed by OS Doze/App Standby restrictions. Schedule deferrable tasks via WorkManager / BGTaskScheduler with network/charging constraints so the OS batches wakeups, and use visible Foreground Services strictly when ongoing active tracking is user-initiated."
+    },
+    {
+      "id": "mob-14",
+      "topic": "App lifecycle",
+      "difficulty": "Advanced",
+      "text": "How do you manage API auth token expiration cleanly if 5 parallel API calls return HTTP 401 simultaneously?",
+      "timeLimitSec": 180,
+      "keyPoints": ["interceptor", "refresh token", "mutex", "lock", "retry", "logout"],
+      "idealAnswer": "Use an HTTP Interceptor (OkHttp Authenticator / Axios / Dio interceptor) protected by a mutex/semaphore lock: only the first 401 triggers the `/refresh` endpoint while the other 4 wait; once the new access token arrives, replay all 5 requests seamlessly—or log out cleanly if refresh fails."
+    },
+    {
+      "id": "mob-15",
+      "topic": "Flutter or React Native",
+      "difficulty": "Intermediate",
+      "text": "What runtime permissions best practices must mobile apps follow for Camera, Location, and Notifications on modern Android & iOS?",
+      "timeLimitSec": 180,
+      "keyPoints": ["just in time", "rationale", "denied", "settings", "least privilege", "runtime"],
+      "idealAnswer": "Request only minimum permissions needed, ask 'just-in-time' when the user taps the feature rather than at onboarding, show a clear pre-prompt rationale explaining why it's needed, and gracefully handle permanent denials by providing deep-link buttons to OS App Settings without crashing."
+    }
+  ],
+  "DevOps / Cloud Engineer": [
+    {
+      "id": "do-1",
+      "topic": "Docker",
+      "difficulty": "Beginner",
+      "text": "Explain the difference between a Virtual Machine (VM) and a Docker Container. What is an Image vs a Container?",
+      "timeLimitSec": 180,
+      "keyPoints": ["kernel", "hypervisor", "guest os", "lightweight", "immutable", "instance"],
+      "idealAnswer": "A VM virtualizes hardware and boots a full Guest OS via a hypervisor (heavy, gigabytes, slow boot). Containers share the host OS kernel using Linux namespaces/cgroups, making them lightweight and millisecond-fast. A Docker Image is the read-only blueprint; a Container is a live running instance of that image."
+    },
+    {
+      "id": "do-2",
+      "topic": "Linux",
+      "difficulty": "Beginner",
+      "text": "How do you check disk space, active listening ports, running processes, and live service logs on a Linux server?",
+      "timeLimitSec": 180,
+      "keyPoints": ["df", "ps", "top", "ss", "netstat", "journalctl"],
+      "idealAnswer": "Use `df -h` (disk usage) and `du -sh` (directory sizes), `ss -tulpn` or `lsof -i` to inspect listening ports, `ps aux` / `htop` for CPU/RAM process tracking, and `journalctl -u <service> -f` or `tail -f` for real-time application logs."
+    },
+    {
+      "id": "do-3",
+      "topic": "Git",
+      "difficulty": "Beginner",
+      "text": "Compare `git merge` vs `git rebase`, and explain what `git cherry-pick` is used for.",
+      "timeLimitSec": 180,
+      "keyPoints": ["history", "linear", "merge commit", "rewrite", "shared branch", "single commit"],
+      "idealAnswer": "`git merge` joins branches while preserving full chronological history with a merge commit. `git rebase` replays local commits atop the latest target branch for a clean linear history (never rebase shared public branches!). `git cherry-pick` copies one specific commit hash (like a hotfix) onto another branch."
+    },
+    {
+      "id": "do-4",
+      "topic": "CI/CD",
+      "difficulty": "Beginner",
+      "text": "What does CI/CD stand for? Describe the stages you would put in a GitHub Actions pipeline for a React + Node web app.",
+      "timeLimitSec": 180,
+      "keyPoints": ["continuous integration", "deployment", "lint", "test", "build", "deploy"],
+      "idealAnswer": "CI (Continuous Integration) automatically verifies code changes via linting, unit tests, and builds on every push/PR. CD (Continuous Delivery/Deployment) pushes verified artifacts/Docker images to staging or production environments with health checks and easy rollback."
+    },
+    {
+      "id": "do-5",
+      "topic": "AWS or Azure basics",
+      "difficulty": "Beginner",
+      "text": "In AWS (or Azure), explain the purpose of EC2, S3, RDS, and IAM with one concrete example for each.",
+      "timeLimitSec": 180,
+      "keyPoints": ["compute", "object storage", "database", "permissions", "least privilege", "managed"],
+      "idealAnswer": "EC2 provides virtual compute servers (API hosts); S3 stores objects like uploaded resume PDFs and static assets durably; RDS manages relational SQL databases with automated backups; IAM governs identities, roles, and least-privilege access policies across resources."
+    },
+    {
+      "id": "do-6",
+      "topic": "Docker",
+      "difficulty": "Intermediate",
+      "text": "What is a multi-stage Dockerfile, and how does instruction ordering affect Docker build caching and image size?",
+      "timeLimitSec": 180,
+      "keyPoints": ["builder", "layers", "cache", "package.json", "smaller", "alpine"],
+      "idealAnswer": "A multi-stage build compiles code in a heavy SDK image (`node:20`) and copies only the built artifacts (`dist/`) into a slim runtime image (`nginx:alpine` or distroless), cutting image size dramatically and removing build tools. Ordering stable files (`COPY package*.json` + `npm ci`) before `COPY . .` preserves cached layers across edits."
+    },
+    {
+      "id": "do-7",
+      "topic": "AWS or Azure basics",
+      "difficulty": "Intermediate",
+      "text": "Explain how a VPC works conceptually: Public vs Private Subnets, Internet Gateway, NAT Gateway, and Security Groups.",
+      "timeLimitSec": 180,
+      "keyPoints": ["public", "private", "internet gateway", "nat", "database", "firewall"],
+      "idealAnswer": "Public subnets route directly to an Internet Gateway and host load balancers/bastions. Private subnets hold app servers and databases isolated from inbound public internet access, using a NAT Gateway solely for outbound package/API updates. Security Groups act as stateful instance-level firewalls."
+    },
+    {
+      "id": "do-8",
+      "topic": "Linux",
+      "difficulty": "Intermediate",
+      "text": "Explain Linux file permissions (`chmod 755` vs `600`). What happens if an SSH `.pem` private key has permissions `777`?",
+      "timeLimitSec": 180,
+      "keyPoints": ["owner", "group", "others", "read write execute", "ssh", "reject"],
+      "idealAnswer": "Permissions map Owner, Group, Others using Read(4), Write(2), Execute(1). `755` = rwxr-xr-x (executables/directories); `600` = rw------- (private owner read/write only). SSH clients explicitly reject private keys open to others (`777`) as insecure until tightened to `chmod 400` or `600`."
+    },
+    {
+      "id": "do-9",
+      "topic": "CI/CD",
+      "difficulty": "Intermediate",
+      "text": "Compare Blue-Green Deployment and Canary Deployment. How do they reduce production downtime during a release?",
+      "timeLimitSec": 180,
+      "keyPoints": ["traffic", "zero downtime", "rollback", "percentage", "parallel", "switch"],
+      "idealAnswer": "Blue-Green runs two identical environments (v1 Blue live, v2 Green staged), tests Green, then switches load balancer traffic instantly with instant one-click rollback. Canary routes a small slice of real traffic (e.g., 5% -> 25% -> 100%) to v2 while monitoring error rates before full rollout."
+    },
+    {
+      "id": "do-10",
+      "topic": "Docker",
+      "difficulty": "Intermediate",
+      "text": "What happens to database data inside a container if the container stops or crashes, and how do Docker Volumes prevent data loss?",
+      "timeLimitSec": 180,
+      "keyPoints": ["ephemeral", "writable layer", "persist", "volume", "mount", "lifecycle"],
+      "idealAnswer": "A container's internal filesystem is ephemeral and disappears when the container is removed. Mounting named Docker Volumes stores persistent data on host storage managed independently of the container lifecycle, surviving restarts and image upgrades cleanly."
+    },
+    {
+      "id": "do-11",
+      "topic": "AWS or Azure basics",
+      "difficulty": "Advanced",
+      "text": "Explain Infrastructure as Code (Terraform). Why are remote state files and state locking critical when multiple engineers collaborate?",
+      "timeLimitSec": 180,
+      "keyPoints": ["declarative", "idempotent", "state", "lock", "s3", "race condition"],
+      "idealAnswer": "Terraform tracks real cloud resource IDs inside `terraform.tfstate` to diff plans safely. Keeping state local causes drift and lost visibility across teammates; storing state remotely (e.g., S3 with locking/DynamoDB) prevents simultaneous runs from corrupting or duplicating infrastructure."
+    },
+    {
+      "id": "do-12",
+      "topic": "CI/CD",
+      "difficulty": "Advanced",
+      "text": "How do you manage application secrets (DB passwords, AI API keys) securely across GitHub Actions, Docker, and cloud deployments?",
+      "timeLimitSec": 180,
+      "keyPoints": ["never commit", "secrets manager", "oidc", "iam roles", "environment", "rotation"],
+      "idealAnswer": "Never bake `.env` secrets into Git history or Docker image layers (`ENV`/`ARG`). Use GitHub Encrypted Secrets + short-lived OIDC federation (avoiding static cloud keys in CI), inject secrets dynamically at runtime from AWS Secrets Manager / Parameter Store via IAM task roles, and support secret rotation."
+    },
+    {
+      "id": "do-13",
+      "topic": "Linux",
+      "difficulty": "Advanced",
+      "text": "A production server alerts: CPU usage is low, RAM has free space, yet disk space is at 100% or processes can't open files (`Too many open files`). What could be wrong?",
+      "timeLimitSec": 180,
+      "keyPoints": ["inode", "unlinked", "deleted", "file descriptor", "ulimit", "lsof"],
+      "idealAnswer": "Two classic Linux traps: (1) deleted giant log files still held open by a running process (`lsof +L1` reveals them—space frees only after restarting/reopening log handles); (2) exhausted inodes (`df -i`) from millions of tiny cache files, or hitting per-process open file descriptor limits (`ulimit -n`)."
+    },
+    {
+      "id": "do-14",
+      "topic": "Docker",
+      "difficulty": "Advanced",
+      "text": "In Kubernetes, explain the difference between Liveness Probes and Readiness Probes, and what breaks if you confuse them.",
+      "timeLimitSec": 180,
+      "keyPoints": ["restart", "traffic", "service", "load balancer", "deadlock", "startup"],
+      "idealAnswer": "Readiness probes decide whether a Pod is ready to receive Service traffic (removing slow-warming pods from endpoints without killing them). Liveness probes detect deadlocked processes and restart the container. Misconfiguring Readiness failures as Liveness triggers endless crash-loops across healthy warming pods."
+    },
+    {
+      "id": "do-15",
+      "topic": "AWS or Azure basics",
+      "difficulty": "Intermediate",
+      "text": "What are the three pillars of Observability (Logs, Metrics, Traces), and how do they work together during an outage?",
+      "timeLimitSec": 180,
+      "keyPoints": ["prometheus", "latency", "alerts", "correlation id", "distributed tracing", "root cause"],
+      "idealAnswer": "Metrics (Prometheus/CloudWatch) track numeric aggregates like error rate & p99 latency to trigger fast alerts. Distributed Traces (OpenTelemetry) pinpoint which downstream microservice or DB query stalled a slow request. Structured Logs linked via trace/request IDs explain exact code failures."
+    }
+  ],
+  "Cybersecurity Engineer": [
+    {
+      "id": "cs-1",
+      "topic": "Networking",
+      "difficulty": "Beginner",
+      "text": "Compare TCP vs UDP, and name one security attack or protocol characteristic associated with TCP's 3-way handshake.",
+      "timeLimitSec": 180,
+      "keyPoints": ["reliable", "connectionless", "syn ack", "syn flood", "dns", "handshake"],
+      "idealAnswer": "TCP is connection-oriented and guarantees ordered delivery via a SYN -> SYN-ACK -> ACK 3-way handshake (HTTP, SSH). UDP is fast and connectionless with no handshake (DNS, video streaming). Attackers exploit TCP handshakes via SYN Flood DoS attacks by sending spoofed SYNs without returning ACKs to exhaust connection tables."
+    },
+    {
+      "id": "cs-2",
+      "topic": "Cryptography basics",
+      "difficulty": "Beginner",
+      "text": "Compare Symmetric encryption (AES) vs Asymmetric encryption (RSA/ECC), and explain how HTTPS TLS uses BOTH together.",
+      "timeLimitSec": 180,
+      "keyPoints": ["shared key", "public private", "handshake", "session key", "speed", "certificate"],
+      "idealAnswer": "Symmetric encryption uses one fast shared key (great for bulk data, hard to share securely upfront). Asymmetric uses public/private key pairs (slower, great for authentication & key exchange). TLS uses asymmetric certificates during the handshake to authenticate the server and agree on a fast symmetric session key for actual traffic."
+    },
+    {
+      "id": "cs-3",
+      "topic": "OWASP Top 10",
+      "difficulty": "Beginner",
+      "text": "Explain Cross-Site Scripting (XSS) — Stored vs Reflected — and the simplest ways developers stop XSS in React and HTTP headers.",
+      "timeLimitSec": 180,
+      "keyPoints": ["malicious script", "dom", "escape", "dangerouslysetinnerhtml", "csp", "sanitize"],
+      "idealAnswer": "XSS injects malicious JavaScript into pages executed in victims' browsers (Reflected bounces from a URL parameter; Stored persists in a DB like a bio/comment). React escapes text bindings automatically—avoid `dangerouslySetInnerHTML`, sanitize untrusted HTML with DOMPurify, enable Content Security Policy (CSP), and use `HttpOnly` cookies."
+    },
+    {
+      "id": "cs-4",
+      "topic": "Cryptography basics",
+      "difficulty": "Beginner",
+      "text": "Contrast Encoding, Encryption, and Hashing, giving a clear real-world example of each.",
+      "timeLimitSec": 180,
+      "keyPoints": ["reversible", "key", "one-way", "base64", "aes", "bcrypt"],
+      "idealAnswer": "Encoding transforms data format for transport without secrecy (Base64, URL encoding—anyone can decode). Encryption hides confidentiality reversibly using a secret key (AES, TLS). Hashing generates a deterministic one-way digest for integrity verification or password storage (SHA-256, bcrypt)."
+    },
+    {
+      "id": "cs-5",
+      "topic": "Networking",
+      "difficulty": "Beginner",
+      "text": "What happens during a DNS lookup and how can attackers abuse DNS (e.g., DNS spoofing or tunneling)?",
+      "timeLimitSec": 180,
+      "keyPoints": ["domain to ip", "resolver", "poisoning", "redirect", "dnssec", "exfiltrate"],
+      "idealAnswer": "DNS translates human domains (`example.com`) into IP addresses via recursive resolvers and authoritative nameservers. Attackers use DNS cache poisoning to redirect users to fake phishing servers (mitigated by DNSSEC/HTTPS) or DNS tunneling to exfiltrate data past lax outbound firewalls."
+    },
+    {
+      "id": "cs-6",
+      "topic": "OWASP Top 10",
+      "difficulty": "Intermediate",
+      "text": "What is Broken Access Control (IDOR — Insecure Direct Object Reference)? Give an API example and how to fix it cleanly.",
+      "timeLimitSec": 180,
+      "keyPoints": ["idor", "ownership", "authorization", "uuid", "session", "check"],
+      "idealAnswer": "IDOR occurs when an endpoint like `/api/resumes/1024` trusts a URL/body ID without verifying if the authenticated user owns record `1024`, letting attackers enumerate IDs to read others' resumes. Always derive `user_id` strictly from the verified server session/JWT and enforce ownership checks/RLS in DB queries."
+    },
+    {
+      "id": "cs-7",
+      "topic": "OWASP Top 10",
+      "difficulty": "Intermediate",
+      "text": "Explain Cross-Site Request Forgery (CSRF) and how `SameSite` cookies + CSRF anti-forgery tokens defend against it.",
+      "timeLimitSec": 180,
+      "keyPoints": ["forged request", "cookies automatically", "samesite", "token", "origin", "header"],
+      "idealAnswer": "CSRF tricks a victim's browser into firing unintended authenticated state-changing requests (like changing account email) because browsers automatically attach cookies across sites. Stop CSRF using `SameSite=Lax/Strict` cookies plus unpredictable anti-CSRF tokens validated against user sessions (or custom Bearer auth headers)."
+    },
+    {
+      "id": "cs-8",
+      "topic": "OWASP Top 10",
+      "difficulty": "Intermediate",
+      "text": "Explain Server-Side Request Forgery (SSRF). If a resume tool lets users submit a 'Portfolio URL' to fetch, what could go wrong?",
+      "timeLimitSec": 180,
+      "keyPoints": ["internal", "metadata", "169.254", "localhost", "allowlist", "redirect"],
+      "idealAnswer": "In SSRF, attackers supply internal addresses like `http://127.0.0.1:8080/admin` or cloud instance metadata `http://169.254.169.254/` so the backend fetches private resources or cloud credentials. Defend by blocking private/loopback IP ranges AFTER DNS resolution, disabling redirects, and restricting allowed domains/ports."
+    },
+    {
+      "id": "cs-9",
+      "topic": "Threat thinking",
+      "difficulty": "Intermediate",
+      "text": "Describe the STRIDE threat modeling framework and apply two categories to a file-upload feature (uploading PDF resumes).",
+      "timeLimitSec": 180,
+      "keyPoints": ["spoofing", "tampering", "repudiation", "information disclosure", "dos", "elevation"],
+      "idealAnswer": "STRIDE covers Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, and Elevation of Privilege. For PDF uploads: guard against DoS (cap file sizes/page counts against zip/PDF bombs), Information Disclosure (sanitize metadata/strict S3 permissions), and Tampering/Code Execution (verify magic bytes, parse safely in sandbox, store outside webroot)."
+    },
+    {
+      "id": "cs-10",
+      "topic": "Networking",
+      "difficulty": "Intermediate",
+      "text": "Compare Firewall, IDS (Intrusion Detection System), IPS (Intrusion Prevention), and WAF (Web Application Firewall).",
+      "timeLimitSec": 180,
+      "keyPoints": ["layer", "l3/l4", "http", "alert", "block", "sql injection"],
+      "idealAnswer": "Network firewalls filter L3/L4 traffic by IPs and ports. IDS inspects traffic passively to alert on suspicious signatures/anomalies, whereas IPS sits inline to actively drop attacks. A WAF inspects L7 HTTP requests specifically to block web exploits like SQLi, XSS, and automated scraping."
+    },
+    {
+      "id": "cs-11",
+      "topic": "Threat thinking",
+      "difficulty": "Advanced",
+      "text": "Walk through your Incident Response workflow if you discover a developer accidentally pushed an AWS or AI API key to a public GitHub repo.",
+      "timeLimitSec": 180,
+      "keyPoints": ["revoke", "rotate", "audit", "logs", "git history", "least privilege"],
+      "idealAnswer": "Contain immediately: revoke and rotate the leaked credential FIRST (deleting the commit alone fails because bots scrape git history within seconds!). Audit CloudTrail/API logs for unauthorized usage/billing spikes, scrub git history if repo stays public, add secret scanning/pre-commit hooks, and tighten IAM permissions."
+    },
+    {
+      "id": "cs-12",
+      "topic": "OWASP Top 10",
+      "difficulty": "Advanced",
+      "text": "How do you secure an LLM / AI application against Prompt Injection and indirect data exfiltration when scanning untrusted user resumes?",
+      "timeLimitSec": 180,
+      "keyPoints": ["system prompt", "untrusted data", "delimiters", "validation", "least privilege", "output"],
+      "idealAnswer": "Treat uploaded resume text strictly as untrusted data enclosed in clear delimiters, never concatenate it into privileged system instructions, never give the LLM unconstrained DB/shell tools without strict validation, enforce output JSON schema validation on the server, and filter PII before third-party logging."
+    },
+    {
+      "id": "cs-13",
+      "topic": "Cryptography basics",
+      "difficulty": "Advanced",
+      "text": "What happens if a developer reuses the same IV/Nonce with AES-GCM or implements JWT verification with `alg: none`?",
+      "timeLimitSec": 180,
+      "keyPoints": ["xor", "keystream", "plaintext", "bypass", "signature", "allowlist"],
+      "idealAnswer": "AES-GCM acts like a stream cipher: reusing a nonce with the same key leaks `C1 XOR C2 = P1 XOR P2`, allowing plaintext and auth key recovery. Accepting `alg: none` or algorithm confusion lets attackers forge unsigned admin JWTs cleanly; always enforce an explicit server-side algorithm allowlist during `jwt.verify`."
+    },
+    {
+      "id": "cs-14",
+      "topic": "Threat thinking",
+      "difficulty": "Advanced",
+      "text": "What are Software Supply Chain attacks (e.g., compromised npm packages or CI pipelines), and how can teams reduce exposure?",
+      "timeLimitSec": 180,
+      "keyPoints": ["lockfile", "npm audit", "sbom", "dependencies", "ci", "pinning"],
+      "idealAnswer": "Attackers compromise popular open-source dependencies, typosquat packages, or inject malicious postinstall scripts. Defend by committing strict lockfiles (`package-lock.json`), running automated SCA scanners (`npm audit`/Dependabot/Snyk), disabling unnecessary install scripts in CI, verifying checksums/SBOMs, and minimizing dependencies."
+    },
+    {
+      "id": "cs-15",
+      "topic": "Networking",
+      "difficulty": "Intermediate",
+      "text": "Explain Zero Trust Architecture principles vs the traditional castle-and-moat VPN security model.",
+      "timeLimitSec": 180,
+      "keyPoints": ["never trust", "always verify", "least privilege", "lateral movement", "microsegmentation", "identity"],
+      "idealAnswer": "Castle-and-moat assumes everything inside the corporate network/VPN is trusted, enabling devastating lateral movement after one phishing breach. Zero Trust assumes breach ('never trust, always verify'), requiring continuous identity/device authentication, microsegmentation, encrypted mTLS traffic, and per-request least privilege."
+    }
+  ],
+  "QA / Test Engineer": [
+    {
+      "id": "qa-1",
+      "topic": "Testing types",
+      "difficulty": "Beginner",
+      "text": "Explain the Testing Pyramid: compare Unit Tests, Integration Tests, and End-to-End (E2E) Tests in speed, cost, and scope.",
+      "timeLimitSec": 180,
+      "keyPoints": ["unit", "integration", "e2e", "fast", "flaky", "isolation"],
+      "idealAnswer": "Unit tests sit at the wide base—fast, isolated checks of individual functions with mocks. Integration tests form the middle—verifying components working together (API + DB). E2E tests sit at the narrow peak (Playwright/Cypress)—slowest and most brittle, testing critical user journeys end-to-end in a real browser."
+    },
+    {
+      "id": "qa-2",
+      "topic": "Testing types",
+      "difficulty": "Beginner",
+      "text": "What is the difference between Verification vs Validation, and Functional vs Non-Functional testing?",
+      "timeLimitSec": 180,
+      "keyPoints": ["spec", "user need", "features", "performance", "security", "usability"],
+      "idealAnswer": "Verification asks 'Are we building the product right?' (against specs/requirements), while Validation asks 'Are we building the right product?' (satisfies actual user needs). Functional testing verifies features work correctly; Non-Functional testing evaluates load performance, security, accessibility, and usability."
+    },
+    {
+      "id": "qa-3",
+      "topic": "Bug reporting",
+      "difficulty": "Beginner",
+      "text": "What essential details must go into a great bug report so a developer can reproduce and fix it on the first try?",
+      "timeLimitSec": 180,
+      "keyPoints": ["steps", "expected", "actual", "environment", "screenshot", "severity"],
+      "idealAnswer": "Include a crisp title, environment details (browser, OS, build/URL), exact numbered Steps to Reproduce, sample test data, Expected vs Actual result, console/network error logs or screenshots/videos, and Severity vs Priority classification."
+    },
+    {
+      "id": "qa-4",
+      "topic": "Test cases",
+      "difficulty": "Beginner",
+      "text": "How would you design positive, negative, and boundary test cases for a Mock Interview 'Answer Box' capped at 50–2000 characters?",
+      "timeLimitSec": 180,
+      "keyPoints": ["boundary", "empty", "2000", "2001", "special characters", "whitespace"],
+      "idealAnswer": "Positive: valid text within 50–2000 chars submits cleanly. Negative: empty string, spaces-only, scripts/XSS payloads, or disconnected network. Boundary Value Analysis: test exact edges like 0, 49, 50, 1999, 2000, and 2001 characters (plus multi-line emojis/Unicode)."
+    },
+    {
+      "id": "qa-5",
+      "topic": "Testing types",
+      "difficulty": "Beginner",
+      "text": "Contrast Smoke Testing, Sanity Testing, and Regression Testing when a new pull request is deployed to staging.",
+      "timeLimitSec": 180,
+      "keyPoints": ["critical path", "stability", "narrow", "existing features", "bug fix", "build"],
+      "idealAnswer": "Smoke testing runs wide, shallow checks right after a build to ensure core flows (login, landing, main submit) don't crash. Sanity testing is narrow and focused on verifying a specific new change or bug fix works. Regression testing ensures recent changes didn't accidentally break existing working features."
+    },
+    {
+      "id": "qa-6",
+      "topic": "Bug reporting",
+      "difficulty": "Intermediate",
+      "text": "Explain the difference between Bug Severity and Bug Priority. Give one example of High Severity / Low Priority, and one Low Severity / High Priority.",
+      "timeLimitSec": 180,
+      "keyPoints": ["impact", "urgency", "crash", "typo", "logo", "rare"],
+      "idealAnswer": "Severity measures technical system impact; Priority measures business urgency to fix. High Severity / Low Priority: app crashes only on a legacy browser version used by 0.01% of users. Low Severity / High Priority: spelling mistake in the company's name or wrong UPI QR price on the main landing/checkout screen."
+    },
+    {
+      "id": "qa-7",
+      "topic": "Automation",
+      "difficulty": "Intermediate",
+      "text": "Why do UI automation tests become flaky (`works on my machine, fails in CI`), and how do you eliminate flakiness in Playwright or Cypress?",
+      "timeLimitSec": 180,
+      "keyPoints": ["sleep", "explicit wait", "data-testid", "race condition", "isolated data", "css selector"],
+      "idealAnswer": "Flakiness comes from hardcoded `sleep(2000)` waits, brittle CSS class selectors, shared mutable test data, and async network races. Fix by using deterministic `data-testid` or accessible role selectors, built-in auto-waiting/network interception, fresh test accounts per run, and zero arbitrary sleeps."
+    },
+    {
+      "id": "qa-8",
+      "topic": "Test cases",
+      "difficulty": "Intermediate",
+      "text": "Explain Equivalence Partitioning and Boundary Value Analysis with an example testing a resume score badge (0–49 red, 50–69 amber, 70–100 green).",
+      "timeLimitSec": 180,
+      "keyPoints": ["partitions", "edges", "-1", "0", "49", "50", "69", "70", "100", "101"],
+      "idealAnswer": "Equivalence Partitioning groups inputs expecting identical behavior (e.g., any value 50–69 should show amber). Since off-by-one bugs hide at edges, Boundary Value Analysis tests `-1, 0, 49, 50, 69, 70, 100, 101` to guarantee exact threshold transitions."
+    },
+    {
+      "id": "qa-9",
+      "topic": "Automation",
+      "difficulty": "Intermediate",
+      "text": "What is the Page Object Model (POM) in test automation, and why is it valuable as a test suite grows from 10 to 200 tests?",
+      "timeLimitSec": 180,
+      "keyPoints": ["maintainability", "selectors", "reusable", "encapsulate", "duplication", "ui change"],
+      "idealAnswer": "POM separates page locators and UI interactions into dedicated class/module methods outside test assertions. When a button selector or login flow changes later, you update one Page Object file instead of hunting across 200 broken test specs."
+    },
+    {
+      "id": "qa-10",
+      "topic": "Testing types",
+      "difficulty": "Intermediate",
+      "text": "How do you test a REST API thoroughly without waiting for the UI to be built (what assertions go beyond checking `HTTP 200`)?",
+      "timeLimitSec": 180,
+      "keyPoints": ["schema", "status codes", "latency", "auth", "database", "negative"],
+      "idealAnswer": "Verify exact HTTP status codes (201/400/401/403/404), validate response JSON schemas and data types, test auth boundaries (missing/expired tokens, cross-user IDOR access), confirm DB state persistence, test malformed/oversized payloads, and assert SLA response latencies."
+    },
+    {
+      "id": "qa-11",
+      "topic": "Automation",
+      "difficulty": "Advanced",
+      "text": "You are testing an AI Mock Interview feature whose backend calls an LLM API. How do you write deterministic automated tests without slow flaky API costs?",
+      "timeLimitSec": 180,
+      "keyPoints": ["mock", "stub", "contract test", "fallback", "timeout", "500"],
+      "idealAnswer": "Split testing layers: mock/stub AI HTTP responses in unit & UI E2E tests to run deterministically in milliseconds—explicitly simulating 429 rate-limits, malformed JSON, and 500 outages to verify fallback question banks work cleanly. Keep a tiny scheduled contract/smoke check hitting the real staging API separately."
+    },
+    {
+      "id": "qa-12",
+      "topic": "Test cases",
+      "difficulty": "Advanced",
+      "text": "Walk through testing a countdown timer (03:00 -> warns at 0:30 -> auto-submits at 0:00) plus Pause/Resume cleanly in QA.",
+      "timeLimitSec": 180,
+      "keyPoints": ["fake timers", "tab switch", "pause", "auto-submit", "double submit", "red warning"],
+      "idealAnswer": "In automation, use fake clocks (`vi.useFakeTimers` / Playwright clock mocking) rather than waiting 3 real minutes! Verify exact 30s visual color transition, verify auto-submit fires once at 0 without race conditions alongside manual clicks, test Pause stops ticking, and test background-tab throttling or refresh edge cases."
+    },
+    {
+      "id": "qa-13",
+      "topic": "Testing types",
+      "difficulty": "Advanced",
+      "text": "Explain Load Testing vs Stress Testing vs Spike Testing. Which metrics tell you a backend is starting to fail under load?",
+      "timeLimitSec": 180,
+      "keyPoints": ["p95", "p99", "throughput", "error rate", "saturation", "breaking point"],
+      "idealAnswer": "Load testing verifies performance at expected concurrency; Stress testing pushes beyond normal limits to locate the breaking point; Spike testing simulates sudden traffic bursts (like a campus exam start). Watch p95/p99 latency spikes, error-rate jumps (5xx/timeouts), memory leaks, and DB connection saturation."
+    },
+    {
+      "id": "qa-14",
+      "topic": "Bug reporting",
+      "difficulty": "Advanced",
+      "text": "Production users hit a bug QA missed during staging sign-off. How do you run a blameless post-mortem and close the testing gap?",
+      "timeLimitSec": 180,
+      "keyPoints": ["root cause", "staging vs prod", "regression test", "monitoring", "reproduce", "process"],
+      "idealAnswer": "Verify hotfix/rollback first, then examine why staging missed it (e.g., staging dataset mismatch, race condition under real load, missing edge case). Add a permanent automated regression test covering that exact bug and improve telemetry/alerts without blaming individuals."
+    },
+    {
+      "id": "qa-15",
+      "topic": "Automation",
+      "difficulty": "Intermediate",
+      "text": "How do you decide which test cases to automate first vs keep as manual exploratory testing?",
+      "timeLimitSec": 180,
+      "keyPoints": ["roi", "repetitive", "critical path", "smoke", "exploratory", "usability"],
+      "idealAnswer": "Automate high-risk, repetitive, deterministic flows (auth, payments, core regression smoke paths, API schema checks) where ROI compounds on every PR. Keep UX polish, newly prototyping layouts, complex human judgment, and ad-hoc exploratory bug-hunting manual."
+    }
+  ],
+  "Embedded / IoT Engineer": [
+    {
+      "id": "iot-1",
+      "topic": "C/C++",
+      "difficulty": "Beginner",
+      "text": "In embedded C, why is the `volatile` keyword essential for hardware status registers and variables shared with an Interrupt Service Routine (ISR)?",
+      "timeLimitSec": 180,
+      "keyPoints": ["compiler optimization", "cache", "register", "re-read", "memory", "isr"],
+      "idealAnswer": "Without `volatile`, the C compiler assumes a variable doesn't change behind the main loop's back and optimizes away repeated memory reads into a CPU register—breaking polling loops or ISR flags forever. `volatile` forces the compiler to read/write the actual memory/hardware address every single time."
+    },
+    {
+      "id": "iot-2",
+      "topic": "Protocols",
+      "difficulty": "Beginner",
+      "text": "Compare UART, SPI, and I2C serial communication protocols in terms of wires, speed, addressing, and typical sensor use cases.",
+      "timeLimitSec": 180,
+      "keyPoints": ["tx rx", "clock", "sck", "sda scl", "full duplex", "pull-up"],
+      "idealAnswer": "UART uses 2 data wires (TX/RX), is asynchronous (needs matching baud rate), point-to-point. I2C uses 2 wires (SDA/SCL) with pull-up resistors, supports 7/10-bit device addressing across many slow sensors (~100–400kHz). SPI uses 4 wires (MOSI/MISO/SCLK/CS), offers full-duplex high speed (MHz) for displays and SD cards."
+    },
+    {
+      "id": "iot-3",
+      "topic": "C/C++",
+      "difficulty": "Beginner",
+      "text": "Why do embedded firmware teams usually avoid dynamic heap allocation (`malloc` / `free` / `new`) on small microcontrollers?",
+      "timeLimitSec": 180,
+      "keyPoints": ["fragmentation", "determinism", "out of memory", "leak", "static allocation", "stack"],
+      "idealAnswer": "Small MCUs have only kilobytes of RAM and run continuously for years without rebooting. Repeated `malloc`/`free` causes heap fragmentation (failing allocations even with free total bytes) and unpredictable non-deterministic timing; static allocation or fixed memory pools keep memory deterministic and safe."
+    },
+    {
+      "id": "iot-4",
+      "topic": "Microcontrollers",
+      "difficulty": "Beginner",
+      "text": "Explain how an Interrupt Service Routine (ISR) works vs polling, and list two strict rules for writing clean ISRs.",
+      "timeLimitSec": 180,
+      "keyPoints": ["hardware event", "short", "fast", "blocking", "printf", "flag"],
+      "idealAnswer": "Polling wastes CPU cycles checking status bits in a loop; interrupts pause normal execution immediately when a hardware pin/timer fires and run an ISR. Keep ISRs ultra-short and non-blocking: never call `delay()`, `malloc`, or heavy `printf` inside an ISR—just capture data / set a volatile flag or signal a semaphore for a worker task."
+    },
+    {
+      "id": "iot-5",
+      "topic": "Microcontrollers",
+      "difficulty": "Beginner",
+      "text": "What is PWM (Pulse Width Modulation) and how would you use a microcontroller GPIO timer to dim an LED or control servo angle?",
+      "timeLimitSec": 180,
+      "keyPoints": ["duty cycle", "frequency", "average voltage", "timer", "square wave", "power"],
+      "idealAnswer": "PWM switches a digital pin rapidly between HIGH and LOW at a fixed frequency while varying the Duty Cycle (% time HIGH). A higher duty cycle delivers higher average power to dim LEDs or control DC motor speed smoothly, while specific pulse widths (e.g., 1–2ms at 50Hz) encode target servo angles."
+    },
+    {
+      "id": "iot-6",
+      "topic": "C/C++",
+      "difficulty": "Intermediate",
+      "text": "Show how you set, clear, toggle, and check bit 4 of an 8-bit hardware register in C using bitwise operators without disturbing other bits.",
+      "timeLimitSec": 180,
+      "keyPoints": ["mask", "1 << 4", "or", "and", "tilde", "xor"],
+      "idealAnswer": "Use a mask `(1U << 4)`: Set bit with `REG |= (1U << 4);`, clear bit with `REG &= ~(1U << 4);`, toggle bit with `REG ^= (1U << 4);`, and check if set via `if (REG & (1U << 4))`. Using unsigned `1U` avoids undefined behavior on high bits."
+    },
+    {
+      "id": "iot-7",
+      "topic": "RTOS basics",
+      "difficulty": "Intermediate",
+      "text": "When should an embedded project move from a superloop (`while(1)`) to an RTOS like FreeRTOS? Explain task scheduling.",
+      "timeLimitSec": 180,
+      "keyPoints": ["preemptive", "priority", "deadlines", "concurrent", "blocking", "tasks"],
+      "idealAnswer": "A superloop works for tiny single-purpose devices, but adding Wi-Fi/BLE stacks alongside tight sensor deadlines quickly breaks superloop timing. A preemptive RTOS (like FreeRTOS) runs independent prioritized tasks via time-slicing/preemption so urgent high-priority tasks preempt slow network operations deterministically."
+    },
+    {
+      "id": "iot-8",
+      "topic": "Protocols",
+      "difficulty": "Intermediate",
+      "text": "Why do IoT edge devices prefer MQTT over plain HTTP for publishing sensor telemetry over unreliable cellular or Wi-Fi networks?",
+      "timeLimitSec": 180,
+      "keyPoints": ["pub sub", "lightweight", "header", "broker", "qos", "battery"],
+      "idealAnswer": "HTTP has large verbose headers and requires repeated TCP/TLS connections for polling, draining battery and bandwidth. MQTT is a lightweight binary pub/sub protocol over one persistent connection with a 2-byte minimal header, built-in QoS levels (0, 1, 2), Last Will messages, and effortless many-to-many topic routing via a broker."
+    },
+    {
+      "id": "iot-9",
+      "topic": "Microcontrollers",
+      "difficulty": "Intermediate",
+      "text": "What is a Watchdog Timer (WDT), how does it recover a frozen remote IoT node in the field, and where should you avoid kicking it?",
+      "timeLimitSec": 180,
+      "keyPoints": ["reset", "countdown", "kick", "feed", "deadlock", "isr"],
+      "idealAnswer": "A Watchdog Timer is an independent hardware countdown that resets the MCU if firmware hangs in an infinite loop or deadlock. Firmware periodically 'kicks/feeds' the watchdog ONLY inside healthy main application progress checks—never automatically inside a periodic timer ISR, which would keep kicking even if the main tasks are frozen!"
+    },
+    {
+      "id": "iot-10",
+      "topic": "Microcontrollers",
+      "difficulty": "Intermediate",
+      "text": "Explain what GPIO pull-up / pull-down resistors do on a push-button input pin and how you handle switch debouncing.",
+      "timeLimitSec": 180,
+      "keyPoints": ["floating", "defined state", "vcc", "ground", "bounce", "debounce"],
+      "idealAnswer": "Without a pull-up or pull-down resistor, an open button pin 'floats' and picks up random electromagnetic noise causing erratic readings. Pulling HIGH (or LOW) holds a stable default state. Mechanical switches bounce electrically for ~10–20ms when pressed; debounce in hardware (RC filter) or firmware via timer-delayed re-sampling."
+    },
+    {
+      "id": "iot-11",
+      "topic": "RTOS basics",
+      "difficulty": "Advanced",
+      "text": "Explain Priority Inversion in an RTOS (famous from Mars Pathfinder) and how Priority Inheritance solves it.",
+      "timeLimitSec": 180,
+      "keyPoints": ["mutex", "high priority", "medium priority", "low priority", "blocked", "priority inheritance"],
+      "idealAnswer": "Priority inversion happens when a Low-priority task holds a mutex needed by a High-priority task, while an unrelated Medium-priority task preempts the Low task—starving the High task indefinitely! Priority Inheritance temporarily boosts the Low mutex-holder's priority to match the waiting High task until the lock is released."
+    },
+    {
+      "id": "iot-12",
+      "topic": "C/C++",
+      "difficulty": "Advanced",
+      "text": "What is DMA (Direct Memory Access), how does it speed up ADC sampling or SPI transfers, and what cache coherency trap can occur on ARM Cortex-M7?",
+      "timeLimitSec": 180,
+      "keyPoints": ["cpu offload", "peripheral", "memory", "buffer", "cache", "invalidate"],
+      "idealAnswer": "DMA copies data directly between peripherals (ADC, SPI, UART) and RAM without tying up CPU instructions per byte, freeing the CPU or keeping it in sleep mode. On MCUs with Data Cache (Cortex-M7), CPU may read stale cached bytes unless you place DMA buffers in non-cacheable regions or clean/invalidate D-Cache cleanly."
+    },
+    {
+      "id": "iot-13",
+      "topic": "Microcontrollers",
+      "difficulty": "Advanced",
+      "text": "How do you design an Over-The-Air (OTA) firmware update mechanism so a power cut at 50% download does not permanently brick a remote IoT device?",
+      "timeLimitSec": 180,
+      "keyPoints": ["dual bank", "bootloader", "rollback", "checksum", "signature", "atomic"],
+      "idealAnswer": "Partition flash with a verified immutable Bootloader plus A/B dual firmware slots. Download the new image into inactive Slot B, verify cryptographic signature (ECDSA) and CRC integrity BEFORE marking Slot B pending, boot with Watchdog health self-tests, and automatically roll back to working Slot A if Slot B fails startup confirmation."
+    },
+    {
+      "id": "iot-14",
+      "topic": "Protocols",
+      "difficulty": "Intermediate",
+      "text": "Compare BLE (Bluetooth Low Energy), Wi-Fi, and LoRaWAN when choosing wireless connectivity for a battery-powered smart agriculture sensor.",
+      "timeLimitSec": 180,
+      "keyPoints": ["range", "power", "bandwidth", "battery", "gateway", "kilometers"],
+      "idealAnswer": "Wi-Fi offers high throughput over ~50m but drains batteries fast. BLE excels at ultra-low-power short-range (~10–50m) pairing with phones. For multi-kilometer outdoor farm fields sending small periodic telemetry packets for years on a coin/AA battery, Sub-GHz LoRaWAN is ideal."
+    },
+    {
+      "id": "iot-15",
+      "topic": "RTOS basics",
+      "difficulty": "Advanced",
+      "text": "Contrast RTOS Binary Semaphores vs Mutexes vs Queues. Why shouldn't an ISR unlock a Mutex directly?",
+      "timeLimitSec": 180,
+      "keyPoints": ["ownership", "signaling", "isr", "priority inheritance", "queue", "thread-safe"],
+      "idealAnswer": "Queues safely pass value copies between tasks/ISRs; Binary Semaphores signal events from ISRs to waking tasks cleanly; Mutexes protect shared resources with strict task ownership and Priority Inheritance. Because ISRs are not tasks and have no priority-inheritance owner context, use `xSemaphoreGiveFromISR` or task notifications instead of Mutexes inside ISRs."
+    }
+  ]
+}
+

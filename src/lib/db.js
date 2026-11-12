@@ -124,11 +124,13 @@ export async function bumpUsageMetric(field) {
 
 export async function saveResumeAnalysis(fileName, result, resumeTextHash = '') {
   const hash = resumeTextHash || result?.text_hash || result?.debug_info?.text_hash || '';
+  const extractedText = result?.extracted_text || result?.debug_info?.text_preview || '';
   const row = {
     id: 'local_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
     created_at: new Date().toISOString(),
     file_name: fileName,
     text_hash: hash,
+    extracted_text: extractedText,
     overall_score: result.overall_score || 85,
     ats_compatibility: result.category_scores?.ats_compatibility ?? 88,
     keyword_match: result.category_scores?.keyword_match ?? 84,
@@ -139,6 +141,7 @@ export async function saveResumeAnalysis(fileName, result, resumeTextHash = '') 
     matched_keywords: result.matched_keywords || [],
     missing_keywords: result.missing_keywords || [],
     suggestions: result.suggestions || [],
+    section_analysis: result.section_analysis || [],
   };
 
   // Always save to localStorage first for instant reliability
@@ -198,7 +201,18 @@ export async function getResumeAnalyses(limit = 10) {
       .order('created_at', { ascending: false })
       .limit(limit);
     if (data && data.length > 0) {
-      return data;
+      return data.map((row) => {
+        const match = localList.find(
+          (l) => l.id === row.id || (l.file_name === row.file_name && l.overall_score === row.overall_score)
+        );
+        return match
+          ? {
+              ...row,
+              extracted_text: row.extracted_text || match.extracted_text || '',
+              section_analysis: row.section_analysis || match.section_analysis || [],
+            }
+          : row;
+      });
     }
   } catch {}
 

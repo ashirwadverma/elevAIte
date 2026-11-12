@@ -24,9 +24,7 @@ import {
   FileText,
   GraduationCap,
   LayoutDashboard,
-  Linkedin,
   LoaderCircle,
-  Mail,
   Menu,
   MessageCircleMore,
   Moon,
@@ -646,63 +644,6 @@ function MainLayout() {
                 </motion.div>
               )}
             </AnimatePresence>
-
-            <footer className="w-full px-4 sm:px-6 lg:px-8 pb-8 pt-4">
-              <div className="mx-auto max-w-4xl rounded-[24px] border border-purple-200/60 bg-white/60 p-6 sm:p-7 shadow-sm backdrop-blur-xl">
-                {/* 2-Column Layout (Navigation Removed) */}
-                <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
-                  {/* Left Side: Brand & Description */}
-                  <div className="max-w-md">
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-rose-500 text-white shadow-sm">
-                        <Sparkles className="h-4 w-4" />
-                      </div>
-                      <span className="font-['Poppins'] text-xl font-bold tracking-tight text-slate-900">
-                        elev<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">AI</span>te
-                      </span>
-                    </div>
-                    <p className="mt-2.5 text-xs sm:text-sm text-slate-600 leading-relaxed">
-                      Turn course syllabi and career ambitions into balanced preparation. AI-powered resume screening, interview mastery, and skill-gap analysis.
-                    </p>
-                  </div>
-
-                  {/* Right Side: DEVELOPER & CONTACT */}
-                  <div className="shrink-0">
-                    <p className="text-xs font-bold uppercase tracking-wider text-blue-600 mb-2.5">
-                      DEVELOPER & CONTACT
-                    </p>
-                    <div className="flex flex-col gap-2 text-xs sm:text-sm text-slate-600">
-                      <a
-                        href="mailto:aashirwadverma88@gmail.com"
-                        className="flex items-center gap-2 hover:text-black transition"
-                      >
-                        <Mail className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                        <span>aashirwadverma88@gmail.com</span>
-                      </a>
-
-                      <a
-                        href="https://www.linkedin.com/in/ashirwad-verma-98445837b"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="group inline-flex items-center gap-2 font-semibold text-slate-900 hover:text-blue-600 transition mt-0.5"
-                      >
-                        <div className="flex h-5 w-5 items-center justify-center rounded bg-[#0077b5] text-white">
-                          <Linkedin className="h-3 w-3 fill-current" />
-                        </div>
-                        <span>LinkedIn Profile</span>
-                        <ArrowUpRight className="h-3 w-3 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                      </a>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Bottom Row */}
-                <div className="mt-5 border-t border-purple-200/50 pt-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
-                  <p>© 2026 elevAIte. All rights reserved.</p>
-                  <p>Built for students who are aiming for top tech careers.</p>
-                </div>
-              </div>
-            </footer>
           </>
         )}
       </div>
@@ -2662,6 +2603,26 @@ function DashboardPage({ usageMetrics: localMetrics }) {
   const [editingId, setEditingId] = useState(null);
   const [editingName, setEditingName] = useState('');
   const [savedFeedbackId, setSavedFeedbackId] = useState(null);
+  const [previewAnalysis, setPreviewAnalysis] = useState(null);
+  const [copiedPreviewText, setCopiedPreviewText] = useState(false);
+
+  useEffect(() => {
+    if (!previewAnalysis) return;
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') setPreviewAnalysis(null);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [previewAnalysis]);
+
+  const copyPreviewResumeText = async (txt) => {
+    if (!txt) return;
+    try {
+      await navigator.clipboard.writeText(txt);
+      setCopiedPreviewText(true);
+      setTimeout(() => setCopiedPreviewText(false), 2000);
+    } catch {}
+  };
 
   const startEditing = (analysis) => {
     setEditingId(analysis.id);
@@ -3040,6 +3001,15 @@ function DashboardPage({ usageMetrics: localMetrics }) {
                             >
                               <Pencil className="h-3.5 w-3.5" />
                             </button>
+                            <button
+                              type="button"
+                              onClick={() => { setCopiedPreviewText(false); setPreviewAnalysis(a); }}
+                              title="View resume"
+                              aria-label="View resume"
+                              className="rounded-md p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition cursor-pointer"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </button>
                             {savedFeedbackId === a.id && (
                               <span className="text-[11px] font-bold text-emerald-600 flex items-center gap-1 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
                                 <Check className="h-3 w-3" /> Saved!
@@ -3148,6 +3118,163 @@ function DashboardPage({ usageMetrics: localMetrics }) {
           )}
         </div>
       )}
+
+      {/* Resume Preview & Saved Analysis Modal */}
+      {previewAnalysis && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-4 backdrop-blur-sm"
+          onClick={() => setPreviewAnalysis(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="resume-preview-title"
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-3xl max-h-[88vh] overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-2xl flex flex-col"
+          >
+            {/* Modal Header */}
+            <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-4 bg-slate-50/80">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-indigo-200 bg-indigo-50 text-indigo-700">
+                  <FileText className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <h3 id="resume-preview-title" className="text-base sm:text-lg font-bold text-slate-900 truncate">
+                    {previewAnalysis.file_name}
+                  </h3>
+                  <p className="text-xs font-semibold text-slate-600">
+                    {previewAnalysis.experience_level || 'Candidate'} • {new Date(previewAnalysis.created_at).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewAnalysis(null)}
+                aria-label="Close resume preview"
+                className="rounded-xl p-2 text-slate-500 hover:bg-slate-200/70 hover:text-slate-900 transition cursor-pointer shrink-0"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal Scrollable Body */}
+            <div className="overflow-y-auto p-6 space-y-5 text-sm">
+              {/* Score Metrics */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                <div className="rounded-2xl border border-indigo-200 bg-indigo-50/80 p-3 text-center">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-700">Overall</p>
+                  <p className="mt-1 text-xl font-extrabold text-indigo-900">{previewAnalysis.overall_score ?? 0}%</p>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-center">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600">ATS</p>
+                  <p className="mt-1 text-lg font-extrabold text-slate-900">{previewAnalysis.ats_compatibility ?? 'N/A'}%</p>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-center">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600">Keywords</p>
+                  <p className="mt-1 text-lg font-extrabold text-slate-900">{previewAnalysis.keyword_match ?? 'N/A'}%</p>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-center">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600">Formatting</p>
+                  <p className="mt-1 text-lg font-extrabold text-slate-900">{previewAnalysis.formatting ?? 'N/A'}%</p>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-center">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600">Impact</p>
+                  <p className="mt-1 text-lg font-extrabold text-slate-900">{previewAnalysis.impact_quantification ?? 'N/A'}%</p>
+                </div>
+              </div>
+
+              {/* Extracted Resume Text Preview */}
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center justify-between mb-2.5">
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-700">Resume Content</p>
+                  {previewAnalysis.extracted_text && (
+                    <button
+                      type="button"
+                      onClick={() => copyPreviewResumeText(previewAnalysis.extracted_text)}
+                      className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-white px-3 py-1 text-[11px] font-bold text-indigo-700 hover:bg-indigo-50 transition cursor-pointer"
+                    >
+                      {copiedPreviewText ? <><Check className="h-3 w-3 text-emerald-600" /> Copied</> : 'Copy Resume Text'}
+                    </button>
+                  )}
+                </div>
+                {previewAnalysis.extracted_text ? (
+                  <pre className="max-h-72 overflow-y-auto whitespace-pre-wrap rounded-xl border border-slate-200/80 bg-white p-4 font-sans text-xs leading-relaxed text-slate-800">
+                    {previewAnalysis.extracted_text}
+                  </pre>
+                ) : (
+                  <p className="rounded-xl border border-dashed border-slate-300 bg-white p-4 text-xs text-slate-600">
+                    Raw extracted text was not cached for this older analysis. Re-analyse the PDF once to view its full extracted text here.
+                  </p>
+                )}
+              </div>
+
+              {/* Executive Summary */}
+              {previewAnalysis.executive_summary && (
+                <div className="rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4">
+                  <p className="text-xs font-bold uppercase tracking-wider text-indigo-700 mb-1">Summary</p>
+                  <p className="text-xs font-medium text-slate-800 leading-relaxed">{previewAnalysis.executive_summary}</p>
+                </div>
+              )}
+
+              {/* Matched Technical Skills */}
+              {Array.isArray(previewAnalysis.matched_keywords) && previewAnalysis.matched_keywords.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-emerald-700 mb-2">
+                    Extracted Skills ({previewAnalysis.matched_keywords.length})
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {previewAnalysis.matched_keywords.map((kw) => (
+                      <span key={kw} className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
+                        {kw}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Suggestions */}
+              {Array.isArray(previewAnalysis.suggestions) && previewAnalysis.suggestions.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-amber-700 mb-2">
+                    Saved Recommendations
+                  </p>
+                  <ul className="space-y-1.5 text-xs text-slate-700">
+                    {previewAnalysis.suggestions.map((sug, sIdx) => {
+                      const text = typeof sug === 'string' ? sug : (sug?.advice || sug?.suggestion || '');
+                      return text ? (
+                        <li key={sIdx} className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                          <ArrowUpRight className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" />
+                          <span>{text}</span>
+                        </li>
+                      ) : null;
+                    })}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-end gap-2.5 border-t border-slate-200 px-6 py-3.5 bg-slate-50/80">
+              <button
+                type="button"
+                onClick={() => setPreviewAnalysis(null)}
+                className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+              >
+                Close
+              </button>
+              <Link
+                to="/resume-analyzer"
+                onClick={() => setPreviewAnalysis(null)}
+                className="inline-flex items-center gap-1.5 rounded-full bg-purple-600 hover:bg-purple-700 px-5 py-2 text-xs font-extrabold text-white shadow-xs transition"
+              >
+                Re-analyse Resume <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }
@@ -3179,10 +3306,14 @@ function PricingPage({ onUsageUpdate }) {
               <div key={item} className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-violet-300" /> {item}</div>
             ))}
           </div>
-          <div className="mt-6 rounded-[24px] border border-white/10 bg-[#090d20]/70 p-4">
+          <div className="mt-6 rounded-[24px] border border-white/10 bg-[#090d20]/90 p-5">
             <p className="text-sm font-semibold text-white">UPI Payment</p>
-            <p className="mt-2 text-sm text-slate-400">Scan the QR code to pay $3 for 3 internship recommendations.</p>
-            <img src="/UPI.qr.jpeg" alt="UPI payment QR code" className="mt-4 h-40 w-40 rounded-2xl border border-violet-400/30 object-cover" />
+            <p className="mt-1.5 text-sm text-slate-400">Scan the QR code to pay $3 for 3 internship recommendations.</p>
+            <img
+              src="/upi-qr.jpg"
+              alt="UPI payment QR code for Aashirwad Verma (aashirwadverma88@okaxis)"
+              className="mt-4 h-44 w-44 rounded-2xl border border-indigo-200 bg-white p-2 object-contain shadow-xs"
+            />
           </div>
           <button onClick={() => onUsageUpdate('internshipRecommendation')} className="mt-8 rounded-full bg-gradient-to-r from-violet-400 to-violet-500 px-5 py-3 font-semibold text-white">Request Internship Match</button>
         </div>
